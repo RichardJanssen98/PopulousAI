@@ -9,7 +9,9 @@ import(Module_Commands)
 include("UtilPThings.lua")
 include("UtilRefs.lua")
 
-AIShaman = {tribe = 0, blastAllowed = 0, lightningAllowed = 0, ghostsAllowed = 0, insectPlagueAllowed = 0, spellDelay = 0, ghostsSpecialDelay = 0, insectPlagueSpecialDelay = 0, dodgeLightning = 0, 
+--Test
+
+AIShaman = {tribe = 0, blastAllowed = 0, lightningAllowed = 0, ghostsAllowed = 0, insectPlagueAllowed = 0, spellDelay = 0, ghostsSpecialDelay = 0, insectPlagueSpecialDelay = 0, dodgeLightning = 0,
     allies = 0, dodgeBlast = 0, blastTrickAllowed = 0, overrideRechargeSpeed = 0, aggroRange = 0, maxDistanceFromWater = 0}
 AIShaman.__index = AIShaman
 
@@ -88,15 +90,15 @@ function AIShaman:handleShamanCombat ()
                                 isAlly = false
                             end
                        end
-                   end 
+                   end
 
                    if (t.Owner ~= self.tribe and t.Model == M_PERSON_MEDICINE_MAN and isAlly == false and get_world_dist_xyz(shaman.Pos.D3, t.Pos.D3) < self.aggroRange) then
                         target = t
                         self.enemyShamanNearby = 1
                    end
-        
+
                    --Check if I can cast Swarm, if not then cast Blast if someone is fighting me
-                   --Insect Plague will only be cast if the tribe has 4 times the cost, this due to Lightning Bolt being more important and it costs twice as much as Insect Plague. 
+                   --Insect Plague will only be cast if the tribe has 4 times the cost, this due to Lightning Bolt being more important and it costs twice as much as Insect Plague.
                    --Thus the Shaman will only cast Insect Plague if they would be able to cast two Lightning Bolts.
                    if (shaman.State == S_PERSON_FIGHT_PERSON_2 and self.insectPlagueAllowed == 1 and MANA(self.tribe) > (self.manaCostInsectPlague * 4) and self.spellDelay == 0 and self.insectPlagueSpecialDelay == 0) then
                        createThing(T_SPELL, M_SPELL_INSECT_PLAGUE, shaman.Owner, shaman.Pos.D3, false, false)
@@ -115,7 +117,7 @@ function AIShaman:handleShamanCombat ()
                    end
 
                    if (target ~= nil) then
-                        if (target.Owner ~= self.tribe and target.Model == M_PERSON_MEDICINE_MAN and isAlly == false) then 
+                        if (target.Owner ~= self.tribe and target.Model == M_PERSON_MEDICINE_MAN and isAlly == false) then
                             if (target.Model == M_PERSON_MEDICINE_MAN) then
                                 --Do the Blast Trick
                             if (self.flyingDuration > 7 and self.flyingDuration < 9 and self.blastTrickAllowed == 1 and shaman.State ~= S_PERSON_ELECTROCUTED and get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 4000 and self.blastTrickDelay == 0 and self.smartCastsBlast < self.maxSmartCastsBlast) then
@@ -149,10 +151,10 @@ function AIShaman:handleShamanCombat ()
                             --Dodge lightning if needed, otherwise only try to dodge blast
                             if (self.dodgeLightning == 1 and shaman.State ~= S_PERSON_FIGHT_PERSON_2) then
                                 --Dodge lightning being cast on me
-                                
+
                                 if (get_world_dist_xyz(target.Pos.D3, shaman.Pos.D3) < 5900 + target.Pos.D3.Ypos*3 and target.Model == M_PERSON_MEDICINE_MAN and target.State == S_PERSON_SPELL_TRANCE) then
                                     SearchMapCells(CIRCULAR, 0, 0, 4, world_coord2d_to_map_idx(shaman.Pos.D2), function(me)
-                                        if (is_map_elem_land_or_coast(me) > 0) then 
+                                        if (is_map_elem_land_or_coast(me) > 0) then
                                             local c2d = Coord2D.new()
                                             map_ptr_to_world_coord2d(me, c2d)
                                             local c3d = Coord3D.new()
@@ -174,7 +176,7 @@ function AIShaman:handleShamanCombat ()
                                     command_person_go_to_coord2d(shaman, c2d)
                                     self.followEnemyDelay = 24
                                     self.dodgeDelay = 28
-                                elseif (everyPow(self.dodgeDelay, 1) and get_world_dist_xyz(target.Pos.D3, shaman.Pos.D3) < 6000 + target.Pos.D3.Ypos*3 and target.Model == M_PERSON_MEDICINE_MAN) then  
+                                elseif (everyPow(self.dodgeDelay, 1) and get_world_dist_xyz(target.Pos.D3, shaman.Pos.D3) < 6000 + target.Pos.D3.Ypos*3 and target.Model == M_PERSON_MEDICINE_MAN) then
                                     SearchMapCells(CIRCULAR, 0, 0, 4, world_coord2d_to_map_idx(shaman.Pos.D2), function(me)
                                         if (is_map_elem_land_or_coast(me) > 0) then
                                             local c2d = Coord2D.new()
@@ -198,7 +200,7 @@ function AIShaman:handleShamanCombat ()
                                                     self.dodgeDelay = G_RANDOM(11)+20 --Dodge at least every second with a max delay of 2 seconds
                                                     return false
                                                 end
-                                            end 
+                                            end
                                         end
                                     return true
                                     end)
@@ -211,7 +213,7 @@ function AIShaman:handleShamanCombat ()
                                     self.followEnemyDelay = 36
                                 end
                             elseif (self.dodgeBlast == 1 and shaman.State ~= S_PERSON_FIGHT_PERSON_2) then   --Dodging blasts
-                                if (everyPow(self.dodgeDelay, 1) and get_world_dist_xyz(target.Pos.D3, shaman.Pos.D3) < 3092 + target.Pos.D3.Ypos*3 and target.Model == M_PERSON_MEDICINE_MAN) then 
+                                if (everyPow(self.dodgeDelay, 1) and get_world_dist_xyz(target.Pos.D3, shaman.Pos.D3) < 3092 + target.Pos.D3.Ypos*3 and target.Model == M_PERSON_MEDICINE_MAN) then
                                         SearchMapCells(CIRCULAR, 0, 0, 4, world_coord2d_to_map_idx(shaman.Pos.D2), function(me)
                                             if (is_map_elem_land_or_coast(me) > 0) then
                                                 local c2d = Coord2D.new()
@@ -248,9 +250,9 @@ function AIShaman:handleShamanCombat ()
                                     self.followEnemyDelay = 36
                                 end
                             end
-                        
+
                             --First try to lock down the enemy shaman with ghost army if allowed
-                            if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 3400 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.ghostsAllowed == 1 and MANA(self.tribe) > self.manaCostGhostArmy and self.spellDelay == 0 and self.ghostsSpecialDelay == 0 and self.smartCastsGhosts < self.maxSmartCastsGhosts and self.enemyCastDelay > 13 and self.enemyCastDelay < 36) then  
+                            if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 3400 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.ghostsAllowed == 1 and MANA(self.tribe) > self.manaCostGhostArmy and self.spellDelay == 0 and self.ghostsSpecialDelay == 0 and self.smartCastsGhosts < self.maxSmartCastsGhosts and self.enemyCastDelay > 13 and self.enemyCastDelay < 36) then
                                 if (is_thing_on_ground(shaman) == 1) then
                                     createThing(T_SPELL, M_SPELL_GHOST_ARMY, shaman.Owner, target.Pos.D3, false, false)
                                         self.spellDelay = 24 + G_RANDOM(13)
@@ -259,7 +261,7 @@ function AIShaman:handleShamanCombat ()
                                         self.smartCastsGhosts = self.smartCastsGhosts + 1
                                         GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostGhostArmy * -1)
               		                    return false
-                                    end    
+                                    end
                             --If I'm allowed and can cast lightning cast it
                             elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 5000 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.lightningAllowed == 1 and MANA(self.tribe) > self.manaCostLightning and self.spellDelay == 0 and self.lightningSpecialDelay == 0 and self.smartCastsLightning < self.maxSmartCastsLightning) then
                                 if (is_thing_on_ground(shaman) == 1) then
@@ -271,7 +273,7 @@ function AIShaman:handleShamanCombat ()
                                         self.smartCastsLightning = self.smartCastsLightning + 1
                                         GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostLightning * -1)
               		                    return false
-                                    end 
+                                    end
                             --If I'm allowed and can cast blast cast it
                             elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2600 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.blastAllowed == 1 and MANA(self.tribe) > self.manaCostBlast and self.spellDelay == 0  and self.smartCastsBlast < self.maxSmartCastsBlast) then
                                 if (is_thing_on_ground(shaman) == 1 and ((self.targetThatIsInAir == target and self.chanceToHitAir == 1) or self.targetThatIsInAir ~= target)) then
@@ -288,7 +290,7 @@ function AIShaman:handleShamanCombat ()
               		                    return false
                                     end
                             end
-                            end                      
+                            end
                         end
                     end
                     if (t.Owner ~= self.tribe and t.Model == M_PERSON_RELIGIOUS and isAlly == false and self.enemyShamanNearby == 0) then
@@ -364,7 +366,7 @@ function AIShaman:handleShamanCombat ()
                 if (shaman == nil) then
                     self.enemyShamanNearby = 0
                 end
-                
+
 
                 return true
                 end)
@@ -384,12 +386,12 @@ function AIShaman:sendGhostsToEnemyShaman(enemyShaman)
     myUnitCount = tableLength(myGhosts)
 
     if (myUnitCount > 0) then
-        for i, unit in pairs(myGhosts) do             
+        for i, unit in pairs(myGhosts) do
             local cmd = Commands.new()
             cmd.CommandType = CMD_ATTACK_TARGET
             cmd.u.TargetIdx:set(enemyShaman.ThingNum)
             unit.Flags = unit.Flags | (1<<4)
-            add_persons_command(unit, cmd, 0)    
+            add_persons_command(unit, cmd, 0)
         end
     end
 end
@@ -422,7 +424,7 @@ function AIShaman:checkSpellDelay()
                 self.targetThatIsInAir = nil
             end
         end
-        
+
         --Update spellDelay each turn
         if (self.spellDelay > 0) then
             self.spellDelay = self.spellDelay - 1
@@ -431,7 +433,7 @@ function AIShaman:checkSpellDelay()
         if (self.blastTrickDelay > 0) then
             self.blastTrickDelay = self.blastTrickDelay - 1
         end
-        
+
         --Update ghostsSpecialDelay each turn
         if (self.ghostsSpecialDelay > 0) then
             self.ghostsSpecialDelay = self.ghostsSpecialDelay - 1
@@ -470,7 +472,7 @@ function AIShaman:checkSpellDelay()
             --Recharge smart casts of Lightning (30 seconds)
             if (everyPow(360, 1)) then
                 if (self.smartCastsLightning ~= 0) then
-                    self.smartCastsLightning = self.smartCastsLightning -1  
+                    self.smartCastsLightning = self.smartCastsLightning -1
                 end
             end
 
@@ -490,7 +492,7 @@ function AIShaman:checkSpellDelay()
             --Recharge smart casts of Lightning (15 seconds)
             if (everyPow(180, 1)) then
                 if (self.smartCastsLightning ~= 0) then
-                    self.smartCastsLightning = self.smartCastsLightning -1  
+                    self.smartCastsLightning = self.smartCastsLightning -1
                 end
             end
 
