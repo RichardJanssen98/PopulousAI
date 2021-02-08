@@ -18,8 +18,8 @@ local DEBUG_STR = string.format("MainEntry.lua has been successfully loaded.")
 
 function OnTurn()
   if (GetTurn() % 12 == 0) then
-    for i=0,10 do
-      local _STR = string.format("State: %s", tostring(isBitAnd(gns.Flags,i)))
+    for i=0,31 do
+      local _STR = string.format("Id: %d ; State: %s", i, tostring(isBitAnd(gns.Flags,i)))
       log(_STR)
     end
     log(string.format("Turn: %d", GetTurn()))
