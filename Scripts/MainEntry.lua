@@ -7,9 +7,9 @@ import(Module_Table)
 import(Module_Objects)
 import(Module_Players)
 
-require "Scripts\\Lib\\LibGameTurn"
-require "Scripts\\Lib\\LibFlags"
-require "Scripts\\ComputerPlayer"
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibGameTurn"
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibFlags"
+require "Mods\\PopulousAi\\Scripts\\ComputerPlayer"
 
 local gs = gsi()
 local gns = gnsi()
