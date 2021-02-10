@@ -9,8 +9,13 @@ function ComputerPlayer:Create(_PN)
   self.ERROR = false
   self.isActive = true
   self.PlayerNum = _PN or nil
+  self._Shapes = {}
 
   return self
+end
+
+function ComputerPlayer:ASDF()
+  -- i hate myself
 end
 
 -- Temporary, might change logic.
@@ -37,8 +42,10 @@ function ComputerPlayer:PreInitialize()
     goto preinit_end
   end
 
-  _STR = string.format("[CP] Computer successfully initialized! Player: %d", self.PlayerNum)
-  log(_STR)
+  --Mandatory to check if it's a function, you never know who is smart.
+  if (OnPlayerInit ~= nil and type(OnPlayerInit) == 'function') then
+    CallHook(OnPlayerInit,self.PlayerNum)
+  end
   ::preinit_end::
 end
 

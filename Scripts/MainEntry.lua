@@ -7,9 +7,14 @@ import(Module_Table)
 import(Module_Objects)
 import(Module_Players)
 
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibHooks"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibGameTurn"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibFlags"
 require "Mods\\PopulousAi\\Scripts\\ComputerPlayer"
+
+function OnPlayerInit(pn)
+  log(string.format("Player %d was initiated.", pn))
+end
 
 local gs = gsi()
 local gns = gnsi()
