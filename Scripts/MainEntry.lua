@@ -8,7 +8,10 @@ import(Module_Table)
 import(Module_Objects)
 import(Module_Players)
 import(Module_Shapes)
+import(Module_Level)
 import(Module_Game)
+import(Module_Person)
+import(Module_Commands)
 
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibHooks"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibGameTurn"
@@ -24,11 +27,20 @@ function OnPlayerInit(pn,CP)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 15)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
   CP.AttrPrefHuts = 25 + G_RANDOM(20)
+  CP.AttrMaxBldgsOnGoing = 4 + G_RANDOM(4)
+
+  if (pn == 1) then
+    CP.ConvManager:AddArea(36, 178, 2)
+    CP.ConvManager:AddArea(40, 154, 2)
+    CP.ConvManager:AddArea(66, 144, 2)
+    CP.ConvManager:AddArea(94, 188, 2)
+    CP.ConvManager:AddArea(98, 198, 2)
+  end
 end
 
 local AiPlayers = {}
 
-for i=1,7 do
+for i=1,3 do
   local cp = ComputerPlayer:Create(i)
   cp:PreInitialize()
   table.insert(AiPlayers,cp)
@@ -76,9 +88,18 @@ function OnTurn()
   local _TURN = GetTurn()
 
   --Ai's building entry point
-  if isEvery2Pow(1) then
-    for i,CP in ipairs(AiPlayers) do
-      CP:ProcessBuilding()
+  if (_TURN > 0) then
+    if isEvery2Pow(2) then
+      for i,CP in ipairs(AiPlayers) do
+        --CP:ProcessBuilding()
+      end
+    end
+
+    if isEvery2Pow(1) then
+      for i,CP in ipairs(AiPlayers) do
+        --CP:ProcessShapes()
+        CP:ProcessConverting()
+      end
     end
   end
   -- if isEvery2Pow(5) then
