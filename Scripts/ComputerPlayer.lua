@@ -44,6 +44,91 @@ _NEW_HUTS_BUILT_BUFFER = {
   [7] = {}
 }
 
+_REBUILDABLE_TOWERS = {
+  [0] = {},
+  [1] = {},
+  [2] = {},
+  [3] = {},
+  [4] = {},
+  [5] = {},
+  [6] = {},
+  [7] = {}
+}
+
+AiTower = {}
+AiTower.__index = AiTower
+
+function AiTower:CreateTower(_x, _z, _pn, _ticks)
+  local self = setmetatable({}, AiTower)
+
+  self.Coord = MAP_XZ_2_WORLD_XYZ(_x, _z) or nil
+  self.PlrNum = _pn
+  self.BldgProxy = ObjectProxy.new()
+  self.ShapeProxy = ObjectProxy.new()
+  self.Radius = 0
+  self.CheckTimeDelay = _ticks or 240
+  self.CheckTimeStamp = gs.Counts.ProcessThings + _ticks
+
+  return self
+end
+
+function AiTower:ProcessTower()
+  if (not self.ShapeProxy:isNull() and self.BldgProxy:isNull()) then
+    if (not self.ShapeProxy:get().u.Shape.BldgThingIdx:isNull()) then
+      self.BldgProxy:set(self.ShapeProxy:get().u.Shape.BldgThingIdx:getThingNum())
+    end
+  end
+  self:CheckTower()
+end
+
+function AiTower:CheckTower()
+  if (self.BldgProxy:isNull() and self.ShapeProxy:isNull()) then
+    if (gs.Counts.ProcessThings > self.CheckTimeStamp) then
+      self.CheckTimeStamp = gs.Counts.ProcessThings + self.CheckTimeDelay
+      local shape_found = false
+      SearchMapCells(2, 0, 0, self.Radius, world_coord3d_to_map_idx(self.Coord), function(me)
+        if (me.MapWhoList:isEmpty()) then
+          me.MapWhoList:processList(function(t)
+            if (t.Type == 9) then
+              if (t.Owner == self.PlrNum) then
+                if (t.u.Shape.BldgModel == 4) then
+                  self.ShapeProxy:set(t.ThingNum)
+                  self.Radius = 0
+                  shape_found = true
+                  return false
+                end
+              end
+            end
+            return true
+          end)
+        end
+        if (not shape_found) then
+          if (is_map_cell_bldg_markable(gs.Players[self.PlrNum],MAP_ELEM_PTR_2_IDX(me),0,0,1,0) == 1) then
+            process_shape_map_elements(MAP_ELEM_PTR_2_IDX(me), 4, G_RANDOM(4), self.PlrNum, 2)
+            me.MapWhoList:processList(function(t)
+              if (t.Type == 9) then
+                if (t.Owner == self.PlrNum) then
+                  if (t.u.Shape.BldgModel == 4) then
+                    self.ShapeProxy:set(t.ThingNum)
+                    self.Radius = 0
+                    return false
+                  end
+                end
+              end
+              return true
+            end)
+            return false
+          end
+        end
+        return true
+      end)
+      if (self.Radius < 5) then
+        self.Radius = self.Radius + 1
+      end
+    end
+  end
+end
+
 AiShaman = {}
 AiShaman.__index = AiShaman
 
@@ -58,6 +143,14 @@ function AiShaman:RegisterShaman(t)
   self.WildConvCount = 0
 
   return self
+end
+
+function AiShaman:isCastingSpell()
+  return (self.ProxyIdx:get().State == 38)
+end
+
+function AiShaman:AcceptingCommands()
+  return (get_thing_curr_cmd_list_ptr(self.ProxyIdx:get()) == nil)
 end
 
 function AiShaman:GotoC3d(_c3d, flag, idx)
@@ -107,7 +200,6 @@ function ConvertManager:Register(_pn)
 
   self.PlrNum = _pn
   self.Areas = {}
-  self.Index = 1
 
   return self
 end
@@ -188,15 +280,40 @@ function ComputerPlayer:GetShotsCount(spell)
 end
 
 function ComputerPlayer:GetOnGoingBuildings()
-  return gs.Players[self.PlayerNum].NumBuildingMarkers
+  return #_SHAPE_HUTS_BUFFER[self.PlayerNum]
+  --return gs.Players[self.PlayerNum].NumBuildingMarkers
 end
 
 function ComputerPlayer:AnyWilds()
   return (#_WILD_BUFFER[self.PlayerNum] > 0)
 end
 
+function ComputerPlayer:SetRebuildableTower(x, z, ticks)
+  local t_tower = AiTower:CreateTower(x, z, self.PlayerNum, ticks)
+  table.insert(_REBUILDABLE_TOWERS[self.PlayerNum], t_tower)
+end
+
+function ComputerPlayer:ProcessRebuildableTowers()
+  if (#_REBUILDABLE_TOWERS[self.PlayerNum] > 0) then
+    for i,Tower in ipairs(_REBUILDABLE_TOWERS[self.PlayerNum]) do
+      Tower:ProcessTower()
+    end
+  end
+end
+
 function ComputerPlayer:ProcessConverting()
   local pn = self.PlayerNum
+  if (self.ShamanThingIdx.WildConvCount > 0) then
+    self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvCount - 1
+    goto process_wild_cd_skip
+  end
+
+  local proxy_wild = nil
+  if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
+    proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
+    --goto process_wild_before
+  end
+
   if (#_WILD_BUFFER[pn] == 0) then
     log("Wild buffer: " .. #_WILD_BUFFER[pn])
     self.ConvManager:ScanAreas()
@@ -220,19 +337,34 @@ function ComputerPlayer:ProcessConverting()
     end
 
     self.ShamanThingIdx:SetWild(wild)
+    proxy_wild = wild
 
-    if (self:GetShotsCount(17) > 0) then
-      if (get_world_dist_xyz(self.ShamanThingIdx.WildTargetIdx:get().Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < 8192) then
-        self.ShamanThingIdx:GotoCastSpell(self.ShamanThingIdx.WildTargetIdx:get().Pos.D2, 17)
-      else
+    ::process_wild_before::
+    if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+      log_msg(8,"" .. math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))
+      if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
         remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
-        self.ShamanThingIdx:GotoC3d(self.ShamanThingIdx.WildTargetIdx:get().Pos.D3, false, 0)
+        self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
+        self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvDelay
+      else
+        self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
       end
     end
 
     ::process_wild_skip::
   end
   log("Wild buffer: " .. #_WILD_BUFFER[pn])
+  ::process_wild_cd_skip::
+end
+
+local function GotoBuild(_thing,shape,idx)
+  --log("Sent building")
+  _thing.Flags = _thing.Flags | (1<<4)
+  local cmd = Commands.new()
+  cmd.CommandType = 6
+  cmd.u.TMIdxs.TargetIdx:set(shape.ThingNum)
+  cmd.u.TMIdxs.MapIdx = world_coord2d_to_map_idx(cmd.u.TMIdxs.TargetIdx:get().Pos.D2)
+  add_persons_command(_thing,cmd,idx)
 end
 
 function ComputerPlayer:ProcessShapes()
@@ -252,23 +384,50 @@ function ComputerPlayer:ProcessShapes()
     ::process_part_bldg_skip::
   end
   if (#_SHAPE_HUTS_BUFFER[pn] > 0) then
-    local t_shape = _SHAPE_HUTS_BUFFER[pn][1]
-    if (t_shape == nil) then
-      table.remove(_SHAPE_HUTS_BUFFER[pn], 1)
-      goto process_shape_skip
-    end
+    local t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
+      if (t.Model == 2) then
+        if (get_thing_curr_cmd_list_ptr(t) == nil) then
+          return false
+        end
+      end
+      return true
+    end)
+    log("SizeBuffer: " .. #_SHAPE_HUTS_BUFFER[pn] .. " Player: " .. pn)
+    for i,shp in ipairs(_SHAPE_HUTS_BUFFER[pn]) do
 
-    if (t_shape.Type ~= 9) then
-      table.remove(_SHAPE_HUTS_BUFFER[pn], 1)
-      goto process_shape_skip
-    end
+      if (_SHAPE_HUTS_BUFFER[pn][i] == nil) then
+        log_msg(8, "Removed")
+        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+        goto process_shape_skip
+      end
 
-    if (t_shape.Owner ~= pn) then
-      table.remove(_SHAPE_HUTS_BUFFER[pn], 1)
-      goto process_shape_skip
-    end
+      if (shp.Type ~= 9) then
+        log_msg(8, "Removed")
+        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+        goto process_shape_skip
+      end
 
-    ::process_shape_skip::
+      if (shp.Owner ~= pn) then
+        log_msg(8, "Removed")
+        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+        goto process_shape_skip
+      end
+
+      if (not shp.u.Shape.BldgThingIdx:isNull()) then
+        log_msg(8, "Removed")
+        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+        goto process_shape_skip
+      end
+
+      if (t_brave ~= nil) then
+        if (shp.u.Shape.NumWorkers < 1) then
+          GotoBuild(t_brave, shp, 0)
+          t_brave = nil
+        end
+      end
+
+      ::process_shape_skip::
+    end
   end
 end
 

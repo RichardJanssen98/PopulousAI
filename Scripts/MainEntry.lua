@@ -5,6 +5,7 @@ import(Module_DataTypes)
 import(Module_Package)
 import(Module_Map)
 import(Module_Table)
+import(Module_Math)
 import(Module_Objects)
 import(Module_Players)
 import(Module_Shapes)
@@ -35,6 +36,37 @@ function OnPlayerInit(pn,CP)
     CP.ConvManager:AddArea(66, 144, 2)
     CP.ConvManager:AddArea(94, 188, 2)
     CP.ConvManager:AddArea(98, 198, 2)
+
+    CP:SetRebuildableTower(56, 156, 120)
+    CP:SetRebuildableTower(60, 156, 140)
+    CP:SetRebuildableTower(70, 158, 160)
+    CP:SetRebuildableTower(70, 162, 180)
+    CP:SetRebuildableTower(78, 162, 200)
+    CP:SetRebuildableTower(62, 144, 220)
+    CP:SetRebuildableTower(66, 140, 240)
+    CP:SetRebuildableTower(42, 150, 260)
+    CP:SetRebuildableTower(34, 144, 280)
+    CP:SetRebuildableTower(28, 138, 300)
+  end
+  if (pn == 2) then
+    CP.ConvManager:AddArea(62, 112, 2)
+    CP.ConvManager:AddArea(64, 130, 2)
+    CP.ConvManager:AddArea(36, 106, 2)
+    CP.ConvManager:AddArea(26, 112, 2)
+    CP.ConvManager:AddArea(10, 80, 2)
+    CP.ConvManager:AddArea(22, 80, 2)
+    CP.ConvManager:AddArea(22, 80, 6)
+
+    CP:SetRebuildableTower(70, 98, 12)
+    CP:SetRebuildableTower(66, 100, 140)
+    CP:SetRebuildableTower(56, 100, 160)
+    CP:SetRebuildableTower(52, 100, 180)
+    CP:SetRebuildableTower(62, 112, 200)
+    CP:SetRebuildableTower(62, 116, 220)
+    CP:SetRebuildableTower(42, 104, 240)
+    CP:SetRebuildableTower(36, 108, 260)
+    CP:SetRebuildableTower(32, 112, 280)
+    CP:SetRebuildableTower(28, 116, 300)
   end
 end
 
@@ -91,56 +123,20 @@ function OnTurn()
   if (_TURN > 0) then
     if isEvery2Pow(2) then
       for i,CP in ipairs(AiPlayers) do
-        --CP:ProcessBuilding()
+        CP:ProcessBuilding()
       end
     end
 
     if isEvery2Pow(1) then
       for i,CP in ipairs(AiPlayers) do
-        --CP:ProcessShapes()
-        CP:ProcessConverting()
+        CP:ProcessShapes()
+        CP:ProcessRebuildableTowers()
+        if (_TURN > 64 and gs.Players[CP.PlayerNum].NumPeople < 42) then
+          CP:ProcessConverting()
+        end
       end
     end
   end
-  -- if isEvery2Pow(5) then
-  --   --Temporary
-  --   log ("Computer Players Count: " .. #AiPlayers)
-  --   for i,CP in ipairs(AiPlayers) do
-  --     if (AiPlayers[i] == nil) then
-  --       log("it's nil!" .. i)
-  --       goto skip
-  --     end
-  --     local _S = CP:isValid()
-  --     local _STR = string.format("Is computer player valid? : %s", tostring(_S))
-  --     log(_STR)
-  --     if (not _S) then
-  --       log("Computer Player was removed. Num: " .. CP.PlayerNum)
-  --       log("" .. i)
-  --       --This is important to set it to nil, instead of table.remove()
-  --       AiPlayers[i] = nil
-  --     end
-  --     ::skip::
-  --   end
-  --   -- Unfortunately LUA doesn't pass variable as REFERENCE, so have to return flag from a function :/
-  --   -- But thats still looks cleaner. MACRO defines should work
-  --   gns.Flags = toggleFlag(gns.Flags,(1<<15))
-  --   local s = getShaman(0)
-  --   if (s ~= nil) then
-  --     if (isFlagIdOn(s.Flags2,25)) then
-  --       log("Is in balloon!")
-  --     end
-  --     if (isFlagOff(s.Flags,(1<<19))) then
-  --       log("Is in control!")
-  --     end
-  --   end
-  --   for i=0,31 do
-  --     -- local _STR = string.format("Id: %d ; State: %s", i, tostring(isFlagIdOn(gns.Flags,i)))
-  --     -- log(_STR)
-  --     -- _STR = string.format("Id: %d ; State: %s", i, tostring(isFlagOn(gns.Flags2,(1<<i))))
-  --     -- log(_STR)
-  --   end
-  --   log(string.format("Turn: %d", GetTurn()))
-  -- end
 end
 
 local function DoesExist(input)
@@ -168,7 +164,8 @@ function OnCreateThing(t)
   end
 
   if (t.Type == 2) then
-    if (t.u.Bldg.HasBuildingExistedBefore == 0) then
+    --Temporary ignore towers.
+    if (t.u.Bldg.HasBuildingExistedBefore == 0 and t.Model ~= 4) then
       AddBldgToQueue(t,t.Owner)
     end
   end
