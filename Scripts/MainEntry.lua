@@ -23,6 +23,8 @@ require "Mods\\PopulousAi\\Scripts\\ComputerPlayer"
 local gs = gsi()
 local gns = gnsi()
 
+ResetSpellsCharging()
+
 function OnPlayerInit(pn,CP)
   log(string.format("Player %d was initiated.", pn))
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 13)
@@ -34,9 +36,9 @@ function OnPlayerInit(pn,CP)
   CP.FlagsAutoBuild = true
   CP.FlagsConstructBldgs = true
   CP.FlagsCheckObstacles = true
-  
-  SpellDisableCharging(pn, 2)
-  SpellDisableCharging(pn, 10)
+
+  DisableSpellCharging(pn, 2)
+  DisableSpellCharging(pn, 10)
 
   if (pn == 1) then
     CP.ConvManager:AddArea(36, 178, 2)
