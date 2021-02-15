@@ -263,9 +263,7 @@ function ComputerPlayer:Create(_PN)
   --Makes computer player not popscript.
   gs.Players[_PN].PlayerType = 2
 
-  --Shaman
-  --local s = getShaman(_PN)
-  log("" ..  getShaman(_PN).ThingNum)
+  --Shaman proxy thing
   self.ShamanThingIdx = AiShaman:RegisterShaman(getShaman(_PN))
 
   --Converting manager
@@ -304,6 +302,14 @@ function ComputerPlayer:AnyWilds()
   return (#_WILD_BUFFER[self.PlayerNum] > 0)
 end
 
+function ComputerPlayer:Deactivate()
+  self.isActive = false
+end
+
+function ComputerPlayer:Activate()
+  self.isActive = true
+end
+
 -- X, Z, Angle, TicksBeforeChecking
 --[[
   Viable angles:
@@ -318,67 +324,68 @@ function ComputerPlayer:SetRebuildableTower(x, z, orient, ticks)
 end
 
 function ComputerPlayer:ProcessRebuildableTowers()
-  if (#_REBUILDABLE_TOWERS[self.PlayerNum] > 0) then
-    for i,Tower in ipairs(_REBUILDABLE_TOWERS[self.PlayerNum]) do
-      Tower:ProcessTower()
+  if (self.isActive) then
+    if (#_REBUILDABLE_TOWERS[self.PlayerNum] > 0) then
+      for i,Tower in ipairs(_REBUILDABLE_TOWERS[self.PlayerNum]) do
+        Tower:ProcessTower()
+      end
     end
   end
 end
 
 function ComputerPlayer:ProcessConverting()
-  local pn = self.PlayerNum
-  if (self.ShamanThingIdx.WildConvCount > 0) then
-    self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvCount - 1
-    goto process_wild_cd_skip
-  end
-
-  local proxy_wild = nil
-  if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
-    proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
-    --goto process_wild_before
-  end
-
-  if (#_WILD_BUFFER[pn] == 0) then
-    log("Wild buffer: " .. #_WILD_BUFFER[pn])
-    self.ConvManager:ScanAreas()
-  end
-
-  if (self:AnyWilds()) then
-    local wild = _WILD_BUFFER[pn][1]
-    if (wild == nil) then
-      table.remove(_WILD_BUFFER[pn], 1)
-      goto process_wild_skip
+  if (self.isActive) then
+    local pn = self.PlayerNum
+    if (self.ShamanThingIdx.WildConvCount > 0) then
+      self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvCount - 1
+      goto process_wild_cd_skip
     end
 
-    if (wild.Type ~= 1) then
-      table.remove(_WILD_BUFFER[pn], 1)
-      goto process_wild_skip
+    local proxy_wild = nil
+    if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
+      proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
+      --goto process_wild_before
     end
 
-    if (wild.Model ~= 1) then
-      table.remove(_WILD_BUFFER[pn], 1)
-      goto process_wild_skip
+    if (#_WILD_BUFFER[pn] == 0) then
+      self.ConvManager:ScanAreas()
     end
 
-    self.ShamanThingIdx:SetWild(wild)
-    proxy_wild = wild
-
-    ::process_wild_before::
-    if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
-      log_msg(8,"" .. math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))
-      if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
-        remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
-        self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
-        self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvDelay
-      else
-        self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
+    if (self:AnyWilds()) then
+      local wild = _WILD_BUFFER[pn][1]
+      if (wild == nil) then
+        table.remove(_WILD_BUFFER[pn], 1)
+        goto process_wild_skip
       end
-    end
 
-    ::process_wild_skip::
+      if (wild.Type ~= 1) then
+        table.remove(_WILD_BUFFER[pn], 1)
+        goto process_wild_skip
+      end
+
+      if (wild.Model ~= 1) then
+        table.remove(_WILD_BUFFER[pn], 1)
+        goto process_wild_skip
+      end
+
+      self.ShamanThingIdx:SetWild(wild)
+      proxy_wild = wild
+
+      ::process_wild_before::
+      if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+        if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
+          remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
+          self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
+          self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvDelay
+        else
+          self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
+        end
+      end
+
+      ::process_wild_skip::
+    end
+    ::process_wild_cd_skip::
   end
-  log("Wild buffer: " .. #_WILD_BUFFER[pn])
-  ::process_wild_cd_skip::
 end
 
 local function GotoBuild(_thing,shape,idx)
@@ -392,77 +399,73 @@ local function GotoBuild(_thing,shape,idx)
 end
 
 function ComputerPlayer:ProcessShapes()
-  local pn = self.PlayerNum
-  if (#_NEW_HUTS_BUILT_BUFFER[pn] > 0) then
-    local t_bldg = _NEW_HUTS_BUILT_BUFFER[pn][1]
-    if (t_bldg == nil) then
-      table.remove(_NEW_HUTS_BUILT_BUFFER[pn], 1)
-      goto process_part_bldg_skip
-    end
-    if (isFlagIdOn(t_bldg.u.Bldg.Flags,3)) then
-      if (OnBuildingComplete ~= nil and type(OnBuildingComplete) == 'function') then
-        CallHook(OnBuildingComplete, t_bldg)
+  if (self.isActive) then
+    local pn = self.PlayerNum
+    if (#_NEW_HUTS_BUILT_BUFFER[pn] > 0) then
+      local t_bldg = _NEW_HUTS_BUILT_BUFFER[pn][1]
+      if (t_bldg == nil) then
         table.remove(_NEW_HUTS_BUILT_BUFFER[pn], 1)
+        goto process_part_bldg_skip
       end
+      if (isFlagIdOn(t_bldg.u.Bldg.Flags,3)) then
+        if (OnBuildingComplete ~= nil and type(OnBuildingComplete) == 'function') then
+          CallHook(OnBuildingComplete, t_bldg)
+          table.remove(_NEW_HUTS_BUILT_BUFFER[pn], 1)
+        end
+      end
+      ::process_part_bldg_skip::
     end
-    ::process_part_bldg_skip::
-  end
-  if (#_SHAPE_HUTS_BUFFER[pn] > 0) then
-    local t_brave = nil
-    if (self.FlagsAutoBuild) then
-      t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
-        if (t.Model == 2) then
-          if (get_thing_curr_cmd_list_ptr(t) == nil) then
-            return false
+    if (#_SHAPE_HUTS_BUFFER[pn] > 0) then
+      local t_brave = nil
+      if (self.FlagsAutoBuild) then
+        t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
+          if (t.Model == 2) then
+            if (get_thing_curr_cmd_list_ptr(t) == nil) then
+              return false
+            end
+          end
+          return true
+        end)
+      end
+      for i,shp in ipairs(_SHAPE_HUTS_BUFFER[pn]) do
+        if (_SHAPE_HUTS_BUFFER[pn][i] == nil) then
+          table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+          goto process_shape_skip
+        end
+
+        if (shp.Type ~= 9) then
+          table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+          goto process_shape_skip
+        end
+
+        if (shp.Owner ~= pn) then
+          table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+          goto process_shape_skip
+        end
+
+        if (not shp.u.Shape.BldgThingIdx:isNull()) then
+          table.remove(_SHAPE_HUTS_BUFFER[pn], i)
+          goto process_shape_skip
+        end
+
+        if (t_brave ~= nil) then
+          if (shp.u.Shape.NumWorkers < 2) then
+            GotoBuild(t_brave, shp, 0)
+            t_brave = nil
           end
         end
-        return true
-      end)
-    end
-    log("SizeBuffer: " .. #_SHAPE_HUTS_BUFFER[pn] .. " Player: " .. pn)
-    for i,shp in ipairs(_SHAPE_HUTS_BUFFER[pn]) do
 
-      if (_SHAPE_HUTS_BUFFER[pn][i] == nil) then
-        log_msg(8, "Removed")
-        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
-        goto process_shape_skip
+        ::process_shape_skip::
       end
-
-      if (shp.Type ~= 9) then
-        log_msg(8, "Removed")
-        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
-        goto process_shape_skip
-      end
-
-      if (shp.Owner ~= pn) then
-        log_msg(8, "Removed")
-        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
-        goto process_shape_skip
-      end
-
-      if (not shp.u.Shape.BldgThingIdx:isNull()) then
-        log_msg(8, "Removed")
-        table.remove(_SHAPE_HUTS_BUFFER[pn], i)
-        goto process_shape_skip
-      end
-
       if (t_brave ~= nil) then
-        if (shp.u.Shape.NumWorkers < 2) then
-          GotoBuild(t_brave, shp, 0)
-          t_brave = nil
-        end
-      end
-
-      ::process_shape_skip::
-    end
-    if (t_brave ~= nil) then
-      for j, twr in ipairs(_REBUILDABLE_TOWERS[pn]) do
-        if (not twr.ShapeProxy:isNull()) then
-          local tower = twr.ShapeProxy:get()
-          if (tower.u.Shape.NumWorkers < 1) then
-            GotoBuild(t_brave, tower, 0)
-            t_brave = nil
-            break
+        for j, twr in ipairs(_REBUILDABLE_TOWERS[pn]) do
+          if (not twr.ShapeProxy:isNull()) then
+            local tower = twr.ShapeProxy:get()
+            if (tower.u.Shape.NumWorkers < 1) then
+              GotoBuild(t_brave, tower, 0)
+              t_brave = nil
+              break
+            end
           end
         end
       end
@@ -471,68 +474,68 @@ function ComputerPlayer:ProcessShapes()
 end
 
 function ComputerPlayer:ProcessBuilding()
-  local pn = self.PlayerNum
-  if (self.FlagsConstructBldgs) then
-    if (#_BUILD_BUFFER_IDXES[pn] > 0) then
-      local mapIdx = _BUILD_BUFFER_IDXES[pn][1]
+  if (self.isActive) then
+    local pn = self.PlayerNum
+    if (self.FlagsConstructBldgs) then
+      if (#_BUILD_BUFFER_IDXES[pn] > 0) then
+        local mapIdx = _BUILD_BUFFER_IDXES[pn][1]
 
-      if (mapIdx == nil) then
-        table.remove(_BUILD_BUFFER_IDXES[pn], 1)
-        goto process_bldg_skip
-      end
-
-      if (self:GetHutsCount() < self.AttrPrefHuts and self:GetOnGoingBuildings() < self.AttrMaxBldgsOnGoing) then
-        local buildable = true
-        local orient = G_RANDOM(4)
-        local mp_ent = MapPosXZ.new()
-        mp_ent.Pos = mapIdx
-        for f=0,1 do
-          increment_map_idx_by_orient(mp_ent,(2+orient) % 4)
-        end
-        local c2d = Coord2D.new()
-
-        map_idx_to_world_coord2d(mp_ent.Pos,c2d)
-        if (is_point_steeper_than(c2d,350) ~= 0) then
-          buildable = false
+        if (mapIdx == nil) then
           table.remove(_BUILD_BUFFER_IDXES[pn], 1)
           goto process_bldg_skip
         end
-        --local _c3d = Coord3D.new()
-        --map_idx_to_world_coord3d(idx,_c3d)
-        SearchMapCells(2,0,0,1,mapIdx,function(me)
-          if (not me.ShapeOrBldgIdx:isNull()) then
+
+        if (self:GetHutsCount() < self.AttrPrefHuts and self:GetOnGoingBuildings() < self.AttrMaxBldgsOnGoing) then
+          local buildable = true
+          local orient = G_RANDOM(4)
+          local mp_ent = MapPosXZ.new()
+          mp_ent.Pos = mapIdx
+          for f=0,1 do
+            increment_map_idx_by_orient(mp_ent,(2+orient) % 4)
+          end
+          local c2d = Coord2D.new()
+
+          map_idx_to_world_coord2d(mp_ent.Pos,c2d)
+          if (is_point_steeper_than(c2d,350) ~= 0) then
             buildable = false
-            return false
+            table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+            goto process_bldg_skip
           end
 
-          if (self.FlagsCheckObstacles) then
-            if (me.Flags & (1<<1) ~= 0) then
+          SearchMapCells(2,0,0,1,mapIdx,function(me)
+            if (not me.ShapeOrBldgIdx:isNull()) then
               buildable = false
               return false
             end
+
+            if (self.FlagsCheckObstacles) then
+              if (me.Flags & (1<<1) ~= 0) then
+                buildable = false
+                return false
+              end
+            end
+
+            if (me.Flags & (1<<9) ~= 0 and me.Flags & (1<<10) ~= 0) then
+              buildable = false
+              return false
+            end
+            local l_idx = MAP_ELEM_PTR_2_IDX(me)
+            local a = is_map_cell_bldg_markable(gs.Players[pn],l_idx,0,0,1,0)
+            if (a == 0) then
+              buildable = false
+              return false
+            end
+            return true
+          end)
+          if (buildable) then
+            process_shape_map_elements(mapIdx, 1, orient, pn, 2)
           end
 
-          if (me.Flags & (1<<9) ~= 0 and me.Flags & (1<<10) ~= 0) then
-            buildable = false
-            return false
-          end
-          local l_idx = MAP_ELEM_PTR_2_IDX(me)
-          local a = is_map_cell_bldg_markable(gs.Players[pn],l_idx,0,0,1,0)
-          if (a == 0) then
-            buildable = false
-            return false
-          end
-          return true
-        end)
-        if (buildable) then
-          process_shape_map_elements(mapIdx, 1, orient, pn, 2)
-          createThing(7,2,8,MAP_XZ_2_WORLD_XYZ(mp_ent.XZ.X,mp_ent.XZ.Z),false,false)
+          table.remove(_BUILD_BUFFER_IDXES[pn], 1)
         end
 
-        table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+        ::process_bldg_skip::
       end
-
-      ::process_bldg_skip::
     end
   end
 end
@@ -554,8 +557,6 @@ function ScanAreaForBldg(_pn, _idx, _radius)
         local c_c3d = MAP_XZ_2_WORLD_XYZ(x,z)
         local me = world_coord3d_to_map_ptr(c_c3d)
         if (me.Flags & (1<<16) == 0 and me.Flags & (1<<9) == 0 and me.Flags & (1<<10) == 0 and me.Flags & (1<<18) == 0 and me.Flags & (1<<26) == 0 and me.Alt ~= 0) then
-          local d = createThing(7,3,0,c_c3d,false,false)
-          d.u.Effect.Duration = 32
           table.insert(_BUILD_BUFFER_IDXES[_pn],world_coord3d_to_map_idx(c_c3d))
         end
       end
@@ -566,7 +567,6 @@ end
 function AddShapeToQueue(t,pn,bldgModel)
   if (bldgModel == 1) then
     table.insert(_SHAPE_HUTS_BUFFER[pn], t)
-    log("ShapeHutsBufferCount: " .. #_SHAPE_HUTS_BUFFER[pn])
   end
 end
 
