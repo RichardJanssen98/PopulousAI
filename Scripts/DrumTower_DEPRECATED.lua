@@ -64,6 +64,12 @@ function DrumTower:towerStatus()
     if (self.foundTower == false) then
         BUILD_DRUM_TOWER(self.tribe, self.xPos, self.zPos)
 
+        local c2d = Coord2D.new()
+        map_xz_to_world_coord2d(self.xPos, self.zPos, c2d)
+        SearchMapCells(CIRCULAR, 0, 0, 1, world_coord2d_to_map_idx(c2d), function (me)
+          
+        return true
+        end)
     else
         self.foundTower = false
     end
