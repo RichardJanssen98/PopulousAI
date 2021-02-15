@@ -275,7 +275,7 @@ function AIShaman:handleShamanCombat ()
                 return false
               end
               --If I'm allowed and can cast blast cast it
-            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2600 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.blastAllowed == 1 and MANA(self.tribe) > self.manaCostBlast and self.spellDelay == 0  and self.smartCastsBlast < self.maxSmartCastsBlast) then
+            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2500 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.blastAllowed == 1 and MANA(self.tribe) > self.manaCostBlast and self.spellDelay == 0  and self.smartCastsBlast < self.maxSmartCastsBlast) then
               if (is_thing_on_ground(shaman) == 1 and ((self.targetThatIsInAir == target and self.chanceToHitAir == 1) or self.targetThatIsInAir ~= target)) then
                 local blast = createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, target.Pos.D3, false, false)
                 blast.u.Spell.TargetThingIdx:set(target.ThingNum)
