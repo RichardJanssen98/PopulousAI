@@ -17,6 +17,7 @@ import(Module_Commands)
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibHooks"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibGameTurn"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibFlags"
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibSpells"
 require "Mods\\PopulousAi\\Scripts\\ComputerPlayer"
 
 local gs = gsi()
@@ -28,7 +29,14 @@ function OnPlayerInit(pn,CP)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 15)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
   CP.AttrPrefHuts = 25 + G_RANDOM(20)
-  CP.AttrMaxBldgsOnGoing = 4 + G_RANDOM(4)
+  CP.AttrMaxBldgsOnGoing = 8 + G_RANDOM(8)
+
+  CP.FlagsAutoBuild = true
+  CP.FlagsConstructBldgs = true
+  CP.FlagsCheckObstacles = true
+  
+  SpellDisableCharging(pn, 2)
+  SpellDisableCharging(pn, 10)
 
   if (pn == 1) then
     CP.ConvManager:AddArea(36, 178, 2)
@@ -37,16 +45,16 @@ function OnPlayerInit(pn,CP)
     CP.ConvManager:AddArea(94, 188, 2)
     CP.ConvManager:AddArea(98, 198, 2)
 
-    CP:SetRebuildableTower(56, 156, 120)
-    CP:SetRebuildableTower(60, 156, 140)
-    CP:SetRebuildableTower(70, 158, 160)
-    CP:SetRebuildableTower(70, 162, 180)
-    CP:SetRebuildableTower(78, 162, 200)
-    CP:SetRebuildableTower(62, 144, 220)
-    CP:SetRebuildableTower(66, 140, 240)
-    CP:SetRebuildableTower(42, 150, 260)
-    CP:SetRebuildableTower(34, 144, 280)
-    CP:SetRebuildableTower(28, 138, 300)
+    CP:SetRebuildableTower(56, 156, 2, 120)
+    CP:SetRebuildableTower(60, 156, 2, 140)
+    CP:SetRebuildableTower(70, 158, 2, 160)
+    CP:SetRebuildableTower(70, 162, 2, 180)
+    CP:SetRebuildableTower(78, 162, 2, 200)
+    CP:SetRebuildableTower(62, 144, 2, 220)
+    CP:SetRebuildableTower(66, 140, 2, 240)
+    CP:SetRebuildableTower(42, 150, 2, 260)
+    CP:SetRebuildableTower(34, 144, 2, 280)
+    CP:SetRebuildableTower(28, 138, 2, 300)
   end
   if (pn == 2) then
     CP.ConvManager:AddArea(62, 112, 2)
@@ -57,16 +65,16 @@ function OnPlayerInit(pn,CP)
     CP.ConvManager:AddArea(22, 80, 2)
     CP.ConvManager:AddArea(22, 80, 6)
 
-    CP:SetRebuildableTower(70, 98, 12)
-    CP:SetRebuildableTower(66, 100, 140)
-    CP:SetRebuildableTower(56, 100, 160)
-    CP:SetRebuildableTower(52, 100, 180)
-    CP:SetRebuildableTower(62, 112, 200)
-    CP:SetRebuildableTower(62, 116, 220)
-    CP:SetRebuildableTower(42, 104, 240)
-    CP:SetRebuildableTower(36, 108, 260)
-    CP:SetRebuildableTower(32, 112, 280)
-    CP:SetRebuildableTower(28, 116, 300)
+    CP:SetRebuildableTower(70, 98, 0, 12)
+    CP:SetRebuildableTower(66, 100, 0, 140)
+    CP:SetRebuildableTower(56, 100, 0, 160)
+    CP:SetRebuildableTower(52, 100, 0, 180)
+    CP:SetRebuildableTower(62, 112, 0, 200)
+    CP:SetRebuildableTower(62, 116, 0, 220)
+    CP:SetRebuildableTower(42, 104, 0, 240)
+    CP:SetRebuildableTower(36, 108, 0, 260)
+    CP:SetRebuildableTower(32, 112, 0, 280)
+    CP:SetRebuildableTower(28, 116, 0, 300)
   end
 end
 

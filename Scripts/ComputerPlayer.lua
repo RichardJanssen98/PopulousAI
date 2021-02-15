@@ -58,13 +58,14 @@ _REBUILDABLE_TOWERS = {
 AiTower = {}
 AiTower.__index = AiTower
 
-function AiTower:CreateTower(_x, _z, _pn, _ticks)
+function AiTower:CreateTower(_x, _z, _orient, _pn, _ticks)
   local self = setmetatable({}, AiTower)
 
   self.Coord = MAP_XZ_2_WORLD_XYZ(_x, _z) or nil
   self.PlrNum = _pn
   self.BldgProxy = ObjectProxy.new()
   self.ShapeProxy = ObjectProxy.new()
+  self.BldgOrient = _orient
   self.Radius = 0
   self.CheckTimeDelay = _ticks or 240
   self.CheckTimeStamp = gs.Counts.ProcessThings + _ticks
@@ -103,22 +104,36 @@ function AiTower:CheckTower()
           end)
         end
         if (not shape_found) then
-          if (is_map_cell_bldg_markable(gs.Players[self.PlrNum],MAP_ELEM_PTR_2_IDX(me),0,0,1,0) == 1) then
-            process_shape_map_elements(MAP_ELEM_PTR_2_IDX(me), 4, G_RANDOM(4), self.PlrNum, 2)
-            me.MapWhoList:processList(function(t)
-              if (t.Type == 9) then
-                if (t.Owner == self.PlrNum) then
-                  if (t.u.Shape.BldgModel == 4) then
-                    self.ShapeProxy:set(t.ThingNum)
-                    self.Radius = 0
-                    return false
+          local pos_valid = false
+          local m_idx = MAP_ELEM_PTR_2_IDX(me)
+          local mp = MapPosXZ.new()
+          mp.Pos = m_idx
+          if (is_map_cell_bldg_markable(gs.Players[self.PlrNum], m_idx, 0, 0, 1, 0) == 1) then
+            increment_map_idx_by_orient(mp, (2 + self.BldgOrient) % 4)
+            if (is_map_cell_bldg_markable(gs.Players[self.PlrNum], mp.Pos, 0, 0, 1, 0) == 1) then
+              pos_valid = true
+            end
+
+            if (pos_valid) then
+              process_shape_map_elements(m_idx, 4, self.BldgOrient, self.PlrNum, 2)
+              me.MapWhoList:processList(function(t)
+                if (t.Type == 9) then
+                  if (t.Owner == self.PlrNum) then
+                    if (t.u.Shape.BldgModel == 4) then
+                      self.ShapeProxy:set(t.ThingNum)
+                      self.Radius = 0
+                      return false
+                    end
                   end
                 end
-              end
-              return true
-            end)
+                return true
+              end)
+            end
+          end
+          if (pos_valid) then
             return false
           end
+          return true
         end
         return true
       end)
@@ -200,26 +215,30 @@ function ConvertManager:Register(_pn)
 
   self.PlrNum = _pn
   self.Areas = {}
+  self.CheckWildsTimeStamp = gs.Counts.ProcessThings
 
   return self
 end
 
 function ConvertManager:ScanAreas()
-  for i,Area in ipairs(self.Areas) do
-    SearchMapCells(2, 0, 0, Area.Radius, world_coord3d_to_map_idx(Area.Coord), function(me)
-      if (not me.MapWhoList:isEmpty()) then
-        me.MapWhoList:processList(function(t)
-          if (t.Type == 1) then
-            if (t.Model == 1) then
-              table.insert(_WILD_BUFFER[self.PlrNum], t)
-              return true
+  if (gs.Counts.ProcessThings > self.CheckWildsTimeStamp) then
+    self.CheckWildsTimeStamp = gs.Counts.ProcessThings + 360
+    for i,Area in ipairs(self.Areas) do
+      SearchMapCells(2, 0, 0, Area.Radius, world_coord3d_to_map_idx(Area.Coord), function(me)
+        if (not me.MapWhoList:isEmpty()) then
+          me.MapWhoList:processList(function(t)
+            if (t.Type == 1) then
+              if (t.Model == 1) then
+                table.insert(_WILD_BUFFER[self.PlrNum], t)
+                return true
+              end
             end
-          end
-          return true
-        end)
-      end
-      return true
-    end)
+            return true
+          end)
+        end
+        return true
+      end)
+    end
   end
 end
 
@@ -229,9 +248,6 @@ function ConvertManager:AddArea(_x, _z, _rad)
 
   local a = ConvertArea:New(c3d, _rad)
   table.insert(self.Areas, a)
-
-  --Reset idx
-  self.Index = 1
 end
 
 ComputerPlayer = {}
@@ -264,9 +280,9 @@ function ComputerPlayer:Create(_PN)
   self.AttrPrefSpyTrains = 0
 
   --Building flags
-  self.FlagsConstructBldgs = true
+  self.FlagsConstructBldgs = false
   self.FlagsAutoBuild = false
-  self.FlagsCheckObstacles = true
+  self.FlagsCheckObstacles = false
 
   return self
 end
@@ -288,8 +304,16 @@ function ComputerPlayer:AnyWilds()
   return (#_WILD_BUFFER[self.PlayerNum] > 0)
 end
 
-function ComputerPlayer:SetRebuildableTower(x, z, ticks)
-  local t_tower = AiTower:CreateTower(x, z, self.PlayerNum, ticks)
+-- X, Z, Angle, TicksBeforeChecking
+--[[
+  Viable angles:
+  0 - South
+  1 - West
+  2 - North
+  3 - East
+]]
+function ComputerPlayer:SetRebuildableTower(x, z, orient, ticks)
+  local t_tower = AiTower:CreateTower(x, z, orient, self.PlayerNum, ticks)
   table.insert(_REBUILDABLE_TOWERS[self.PlayerNum], t_tower)
 end
 
@@ -384,14 +408,17 @@ function ComputerPlayer:ProcessShapes()
     ::process_part_bldg_skip::
   end
   if (#_SHAPE_HUTS_BUFFER[pn] > 0) then
-    local t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
-      if (t.Model == 2) then
-        if (get_thing_curr_cmd_list_ptr(t) == nil) then
-          return false
+    local t_brave = nil
+    if (self.FlagsAutoBuild) then
+      t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
+        if (t.Model == 2) then
+          if (get_thing_curr_cmd_list_ptr(t) == nil) then
+            return false
+          end
         end
-      end
-      return true
-    end)
+        return true
+      end)
+    end
     log("SizeBuffer: " .. #_SHAPE_HUTS_BUFFER[pn] .. " Player: " .. pn)
     for i,shp in ipairs(_SHAPE_HUTS_BUFFER[pn]) do
 
@@ -420,13 +447,25 @@ function ComputerPlayer:ProcessShapes()
       end
 
       if (t_brave ~= nil) then
-        if (shp.u.Shape.NumWorkers < 1) then
+        if (shp.u.Shape.NumWorkers < 2) then
           GotoBuild(t_brave, shp, 0)
           t_brave = nil
         end
       end
 
       ::process_shape_skip::
+    end
+    if (t_brave ~= nil) then
+      for j, twr in ipairs(_REBUILDABLE_TOWERS[pn]) do
+        if (not twr.ShapeProxy:isNull()) then
+          local tower = twr.ShapeProxy:get()
+          if (tower.u.Shape.NumWorkers < 1) then
+            GotoBuild(t_brave, tower, 0)
+            t_brave = nil
+            break
+          end
+        end
+      end
     end
   end
 end
