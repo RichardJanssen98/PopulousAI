@@ -421,66 +421,6 @@ function ComputerPlayer:ProcessConverting()
     if (#_WILD_BUFFER[pn] == 0) then
       self.ConvManager:ScanAreas()
     end
-    -- local proxy_wild = nil
-    -- if (self.ShamanThingIdx.WildConvTimeStamp < gs.Counts.ProcessThings) then
-    --   if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
-    --     proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
-    --     if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
-    --       if (proxy_wild.Substate ~= 3) then
-    --         if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
-    --           remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
-    --           self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
-    --           self.ShamanThingIdx.WildConvTimeStamp = gs.Counts.ProcessThings + 60
-    --         else
-    --           self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
-    --         end
-    --       end
-    --     end
-    --   end
-    --
-    --   if (#_WILD_BUFFER[pn] == 0) then
-    --     self.ConvManager:ScanAreas()
-    --   end
-    --
-    --   if (self:AnyWilds()) then
-    --     local wild = _WILD_BUFFER[pn][1]
-    --     if (wild == nil) then
-    --       table.remove(_WILD_BUFFER[pn], 1)
-    --       goto process_wild_skip
-    --     end
-    --
-    --     if (wild.Type ~= 1) then
-    --       table.remove(_WILD_BUFFER[pn], 1)
-    --       goto process_wild_skip
-    --     end
-    --
-    --     if (wild.Model ~= 1) then
-    --       table.remove(_WILD_BUFFER[pn], 1)
-    --       goto process_wild_skip
-    --     end
-    --
-    --     if (self.ShamanThingIdx.WildTargetIdx:isNull()) then
-    --       self.ShamanThingIdx:SetWild(wild)
-    --       proxy_wild = wild
-    --     end
-    --
-    --     ::process_wild_before::
-    --     if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
-    --       if (proxy_wild.Substate ~= 3) then
-    --         if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
-    --           remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
-    --           self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
-    --           self.ShamanThingIdx.WildConvTimeStamp = gs.Counts.ProcessThings + 60
-    --         else
-    --           self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
-    --         end
-    --       end
-    --     end
-    --
-    --     ::process_wild_skip::
-    --   end
-    -- end
-    -- ::process_wild_cd_skip::
   end
 end
 
