@@ -47,6 +47,8 @@ function OnPlayerInit(pn,CP)
     CP.ConvManager:AddArea(94, 188, 2)
     CP.ConvManager:AddArea(98, 198, 2)
 
+    CP.ShamanThingIdx:SetStandPointXZ(58, 158)
+
     CP:SetRebuildableTower(56, 156, 2, 120)
     CP:SetRebuildableTower(60, 156, 2, 140)
     CP:SetRebuildableTower(70, 158, 2, 160)
@@ -66,6 +68,8 @@ function OnPlayerInit(pn,CP)
     CP.ConvManager:AddArea(10, 80, 2)
     CP.ConvManager:AddArea(22, 80, 2)
     CP.ConvManager:AddArea(22, 80, 6)
+
+    CP.ShamanThingIdx:SetStandPointXZ(52, 98)
 
     CP:SetRebuildableTower(70, 98, 0, 12)
     CP:SetRebuildableTower(66, 100, 0, 140)
@@ -129,15 +133,21 @@ local DEBUG_STR = string.format("MainEntry.lua has been successfully loaded.")
 function OnTurn()
   local _TURN = GetTurn()
 
-  --Ai's building entry point
+  --Ai's entry point
   if (_TURN > 0) then
-    if isEvery2Pow(2) then
+    if isEvery2Pow(1) then
       for i,CP in ipairs(AiPlayers) do
         CP:ProcessBuilding()
       end
     end
 
-    if isEvery2Pow(1) then
+    if isEvery2Pow(4) then
+      for i,CP in ipairs(AiPlayers) do
+        CP.ShamanThingIdx:Process()
+      end
+    end
+
+    if isEvery2Pow(3) then
       for i,CP in ipairs(AiPlayers) do
         CP:ProcessShapes()
         CP:ProcessRebuildableTowers()

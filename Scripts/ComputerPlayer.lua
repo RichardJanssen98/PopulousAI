@@ -152,12 +152,47 @@ function AiShaman:RegisterShaman(t)
 
   self.ProxyIdx = ObjectProxy.new()
   self.ProxyIdx:set(t.ThingNum)
+  self.ShamOwner = t.Owner
+  self.StandPoint = nil
 
   self.WildTargetIdx = ObjectProxy.new()
-  self.WildConvDelay = 16
-  self.WildConvCount = 0
+  self.WildConvTimeStamp = gs.Counts.ProcessThings + 64
 
   return self
+end
+
+function AiShaman:SetStandPointXZ(_x, _z)
+  self.StandPoint = MAP_XZ_2_WORLD_XYZ(_x, _z)
+end
+
+function AiShaman:SetStandPointC3d(_c3d)
+  self.StandPoint = _c3d
+end
+
+function AiShaman:RemoveStandPoint()
+  self.StandPoint = nil
+end
+
+function AiShaman:Process()
+  if (self.ProxyIdx:isNull()) then
+    local s = getShaman(self.ShamOwner)
+    if (s ~= nil) then
+      self.ProxyIdx:set(s.ThingNum)
+    end
+    goto AiShaman_process_skip
+  end
+  if (self.StandPoint ~= nil) then
+    if (self:AcceptingCommands() and (not self:isCastingSpell())) then
+      if (get_world_dist_xyz(self.ProxyIdx:get().Pos.D3, self.StandPoint) > 768) then
+        self:GotoC3d(self.StandPoint, false, 0)
+      end
+    end
+  end
+  ::AiShaman_process_skip::
+end
+
+function AiShaman:SetConvertTicks(_ticks)
+  self.WildConvTimeStamp = gs.Counts.ProcessThings + _ticks
 end
 
 function AiShaman:isCastingSpell()
@@ -192,7 +227,7 @@ end
 
 function AiShaman:SetWild(t)
   self.WildTargetIdx:set(t.ThingNum)
-  self.WildConvCount = self.WildConvDelay
+  self.WildConvTimeStamp = gs.Counts.ProcessThings + 60
 end
 
 ConvertManager = {}
@@ -336,55 +371,116 @@ end
 function ComputerPlayer:ProcessConverting()
   if (self.isActive) then
     local pn = self.PlayerNum
-    if (self.ShamanThingIdx.WildConvCount > 0) then
-      self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvCount - 1
-      goto process_wild_cd_skip
-    end
+    if (not self.ShamanThingIdx.ProxyIdx:isNull() and self:AnyWilds()) then
+      if (self.ShamanThingIdx.WildConvTimeStamp < gs.Counts.ProcessThings) then
+        log("Processed Converting Phase")
 
-    local proxy_wild = nil
-    if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
-      proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
-      --goto process_wild_before
-    end
+        if (self.ShamanThingIdx.WildTargetIdx:isNull()) then
+          log("Not found")
+          if (#_WILD_BUFFER[pn] > 0) then
+            log("There are wilds")
+            local w = _WILD_BUFFER[pn][1]
 
+            if (w == nil) then
+              table.remove(_WILD_BUFFER[pn], 1)
+              goto process_wild_skip
+            end
+
+            if (w.Type ~= 1) then
+              table.remove(_WILD_BUFFER[pn], 1)
+              goto process_wild_skip
+            end
+
+            if (w.Model ~= 1) then
+              table.remove(_WILD_BUFFER[pn], 1)
+              goto process_wild_skip
+            end
+
+            self.ShamanThingIdx:SetWild(w)
+
+            ::process_wild_skip::
+          end
+        end
+        if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
+          local w = self.ShamanThingIdx.WildTargetIdx:get()
+          if (w.Substate ~= 3) then
+            if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+              local s = self.ShamanThingIdx.ProxyIdx:get()
+              if (get_world_dist_xyz(s.Pos.D3, w.Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
+                remove_all_persons_commands(s)
+                self.ShamanThingIdx:GotoCastSpell(w.Pos.D2, 17)
+                self.ShamanThingIdx:SetConvertTicks(60)
+              else
+                self.ShamanThingIdx:GotoC3d(w.Pos.D3, false, 0)
+              end
+            end
+          end
+        end
+      end
+    end
     if (#_WILD_BUFFER[pn] == 0) then
       self.ConvManager:ScanAreas()
     end
-
-    if (self:AnyWilds()) then
-      local wild = _WILD_BUFFER[pn][1]
-      if (wild == nil) then
-        table.remove(_WILD_BUFFER[pn], 1)
-        goto process_wild_skip
-      end
-
-      if (wild.Type ~= 1) then
-        table.remove(_WILD_BUFFER[pn], 1)
-        goto process_wild_skip
-      end
-
-      if (wild.Model ~= 1) then
-        table.remove(_WILD_BUFFER[pn], 1)
-        goto process_wild_skip
-      end
-
-      self.ShamanThingIdx:SetWild(wild)
-      proxy_wild = wild
-
-      ::process_wild_before::
-      if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
-        if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
-          remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
-          self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
-          self.ShamanThingIdx.WildConvCount = self.ShamanThingIdx.WildConvDelay
-        else
-          self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
-        end
-      end
-
-      ::process_wild_skip::
-    end
-    ::process_wild_cd_skip::
+    -- local proxy_wild = nil
+    -- if (self.ShamanThingIdx.WildConvTimeStamp < gs.Counts.ProcessThings) then
+    --   if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
+    --     proxy_wild = self.ShamanThingIdx.WildTargetIdx:get()
+    --     if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+    --       if (proxy_wild.Substate ~= 3) then
+    --         if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
+    --           remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
+    --           self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
+    --           self.ShamanThingIdx.WildConvTimeStamp = gs.Counts.ProcessThings + 60
+    --         else
+    --           self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
+    --         end
+    --       end
+    --     end
+    --   end
+    --
+    --   if (#_WILD_BUFFER[pn] == 0) then
+    --     self.ConvManager:ScanAreas()
+    --   end
+    --
+    --   if (self:AnyWilds()) then
+    --     local wild = _WILD_BUFFER[pn][1]
+    --     if (wild == nil) then
+    --       table.remove(_WILD_BUFFER[pn], 1)
+    --       goto process_wild_skip
+    --     end
+    --
+    --     if (wild.Type ~= 1) then
+    --       table.remove(_WILD_BUFFER[pn], 1)
+    --       goto process_wild_skip
+    --     end
+    --
+    --     if (wild.Model ~= 1) then
+    --       table.remove(_WILD_BUFFER[pn], 1)
+    --       goto process_wild_skip
+    --     end
+    --
+    --     if (self.ShamanThingIdx.WildTargetIdx:isNull()) then
+    --       self.ShamanThingIdx:SetWild(wild)
+    --       proxy_wild = wild
+    --     end
+    --
+    --     ::process_wild_before::
+    --     if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+    --       if (proxy_wild.Substate ~= 3) then
+    --         if (get_world_dist_xyz(proxy_wild.Pos.D3, self.ShamanThingIdx.ProxyIdx:get().Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
+    --           remove_all_persons_commands(self.ShamanThingIdx.ProxyIdx:get())
+    --           self.ShamanThingIdx:GotoCastSpell(proxy_wild.Pos.D2, 17)
+    --           self.ShamanThingIdx.WildConvTimeStamp = gs.Counts.ProcessThings + 60
+    --         else
+    --           self.ShamanThingIdx:GotoC3d(proxy_wild.Pos.D3, false, 0)
+    --         end
+    --       end
+    --     end
+    --
+    --     ::process_wild_skip::
+    --   end
+    -- end
+    -- ::process_wild_cd_skip::
   end
 end
 
