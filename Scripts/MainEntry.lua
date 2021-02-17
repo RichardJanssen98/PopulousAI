@@ -30,7 +30,8 @@ function OnPlayerInit(pn,CP)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 13)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 15)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
-  CP.AttrPrefHuts = 25 + G_RANDOM(20)
+  CP.AttrPrefHuts = 35
+  CP.AttrPrefTempleTrains = 1
   CP.AttrMaxBldgsOnGoing = 5 + G_RANDOM(5)
 
   CP.FlagsAutoBuild = true
@@ -126,9 +127,17 @@ end
 ]]
 
 local DEBUG_STR = string.format("MainEntry.lua has been successfully loaded.")
-
+local index = 0
 function OnTurn()
   local _TURN = GetTurn()
+
+  -- local s = getShaman(0)
+  -- if (s ~= nil) then
+  --   if isEvery2Pow(3) then
+  --     CheckBldgShape(world_coord2d_to_map_idx(s.Pos.D2), s.Owner, 1, index)
+  --     index = (index + 1) % 4
+  --   end
+  -- end
 
   --Ai's entry point
   if (_TURN > 0) then
@@ -177,13 +186,13 @@ end
 
 function OnCreateThing(t)
   if (t.Type == 9) then
-    AddShapeToQueue(t,t.Owner,t.u.Shape.BldgModel)
+    AddShapeToQueue(t, t.Owner, t.u.Shape.BldgModel)
   end
 
   if (t.Type == 2) then
     --Temporary ignore towers.
     if (t.u.Bldg.HasBuildingExistedBefore == 0 and t.Model ~= 4) then
-      AddBldgToQueue(t,t.Owner)
+      AddBldgToQueue(t, t.Owner)
     end
   end
 end

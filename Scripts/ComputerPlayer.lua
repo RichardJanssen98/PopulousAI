@@ -24,6 +24,17 @@ _BUILD_BUFFER_IDXES = {
   [7] = {}
 }
 
+_SHAPE_TEMPLE_BUFFER = {
+  [0] = {},
+  [1] = {},
+  [2] = {},
+  [3] = {},
+  [4] = {},
+  [5] = {},
+  [6] = {},
+  [7] = {}
+}
+
 _SHAPE_HUTS_BUFFER = {
   [0] = {},
   [1] = {},
@@ -326,6 +337,10 @@ function ComputerPlayer:GetHutsCount()
   return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[1] + gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[2] + gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[3] + #_SHAPE_HUTS_BUFFER[self.PlayerNum]
 end
 
+function ComputerPlayer:GetTemplesCount()
+  return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[5] + #_SHAPE_TEMPLE_BUFFER[self.PlayerNum]
+end
+
 function ComputerPlayer:GetShotsCount(spell)
   return gs.ThisLevelInfo.PlayerThings[self.PlayerNum].SpellsAvailableOnce[spell] & 15
 end
@@ -449,7 +464,7 @@ function ComputerPlayer:ProcessShapes()
       end
       ::process_part_bldg_skip::
     end
-    if (#_SHAPE_HUTS_BUFFER[pn] > 0) then
+    if (#_SHAPE_HUTS_BUFFER[pn] > 0 or #_SHAPE_TEMPLE_BUFFER[pn] > 0) then
       local t_brave = nil
       if (self.FlagsAutoBuild) then
         t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
@@ -460,6 +475,36 @@ function ComputerPlayer:ProcessShapes()
           end
           return true
         end)
+      end
+      for i,shp in ipairs(_SHAPE_TEMPLE_BUFFER[pn]) do
+        if (_SHAPE_TEMPLE_BUFFER[pn][i] == nil) then
+          table.remove(_SHAPE_TEMPLE_BUFFER[pn], i)
+          goto process_shape_temple_skip
+        end
+
+        if (shp.Type ~= 9) then
+          table.remove(_SHAPE_TEMPLE_BUFFER[pn], i)
+          goto process_shape_temple_skip
+        end
+
+        if (shp.Owner ~= pn) then
+          table.remove(_SHAPE_TEMPLE_BUFFER[pn], i)
+          goto process_shape_temple_skip
+        end
+
+        if (not shp.u.Shape.BldgThingIdx:isNull()) then
+          table.remove(_SHAPE_TEMPLE_BUFFER[pn], i)
+          goto process_shape_temple_skip
+        end
+
+        if (t_brave ~= nil) then
+          if (shp.u.Shape.NumWorkers < 2) then
+            GotoBuild(t_brave, shp, 0)
+            t_brave = nil
+          end
+        end
+
+        ::process_shape_temple_skip::
       end
       for i,shp in ipairs(_SHAPE_HUTS_BUFFER[pn]) do
         if (_SHAPE_HUTS_BUFFER[pn][i] == nil) then
@@ -519,6 +564,20 @@ function ComputerPlayer:ProcessBuilding()
           goto process_bldg_skip
         end
 
+        if (self:GetTemplesCount() < self.AttrPrefTempleTrains) then
+          local res = false
+
+          for i = 0, 3 do
+            res = CheckBldgShape(mapIdx, pn, 5, i)
+            if (res) then
+              process_shape_map_elements(mapIdx, 5, i, pn, 2)
+              break
+            end
+          end
+
+          table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+          goto process_bldg_skip
+        end
         if (self:GetHutsCount() < self.AttrPrefHuts and self:GetOnGoingBuildings() < self.AttrMaxBldgsOnGoing) then
           local res = false
 
@@ -531,6 +590,7 @@ function ComputerPlayer:ProcessBuilding()
           end
 
           table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+          goto process_bldg_skip
         end
 
         ::process_bldg_skip::
@@ -566,6 +626,10 @@ end
 function AddShapeToQueue(t,pn,bldgModel)
   if (bldgModel == 1) then
     table.insert(_SHAPE_HUTS_BUFFER[pn], t)
+  end
+
+  if (bldgModel == 5) then
+    table.insert(_SHAPE_TEMPLE_BUFFER[pn], t)
   end
 end
 

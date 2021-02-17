@@ -34,17 +34,19 @@ function CheckBldgShape(_mapidx, _pn, _bldg, _orient)
     increment_map_idx_by_orient(mpe, (2 + _orient) % 4)
     increment_map_idx_by_orient(mpe, (2 + _orient) % 4)
     local c2d = Coord2D.new()
+
     map_idx_to_world_coord2d(mpe.Pos, c2d)
     if (is_point_steeper_than(c2d, 300) ~= 0) then
       buildable = false
       goto skip
     end
 
-    increment_map_idx_by_orient(mp1, (2 + _orient) % 4)
-    increment_map_idx_by_orient(mp2, (2 + _orient) % 4)
-    increment_map_idx_by_orient(mp3, (2 + _orient) % 4)
+    increment_map_idx_by_orient(mp1, (0 + _orient) % 4)
+    increment_map_idx_by_orient(mp2, (0 + _orient) % 4)
+    increment_map_idx_by_orient(mp3, (0 + _orient) % 4)
     increment_map_idx_by_orient(mp1, (2 + _orient + 1) % 4)
     increment_map_idx_by_orient(mp3, (2 + _orient - 1) % 4)
+
 
     if (is_map_cell_bldg_markable(gs.Players[_pn], mp1.Pos, 0, 0, 1, 0) == 0) then
       buildable = false
@@ -58,10 +60,10 @@ function CheckBldgShape(_mapidx, _pn, _bldg, _orient)
       buildable = false
       goto skip
     end
-    for i = 0, 2 do
-      increment_map_idx_by_orient(mp1, (2 + _orient -2) % 4)
-      increment_map_idx_by_orient(mp2, (2 + _orient -2) % 4)
-      increment_map_idx_by_orient(mp3, (2 + _orient -2) % 4)
+    for i = 0, 1 do
+      increment_map_idx_by_orient(mp1, (2 + _orient - 4) % 4)
+      increment_map_idx_by_orient(mp2, (2 + _orient - 4) % 4)
+      increment_map_idx_by_orient(mp3, (2 + _orient - 4) % 4)
       if (is_map_cell_bldg_markable(gs.Players[_pn], mp1.Pos, 0, 0, 1, 0) == 0) then
         buildable = false
         break
@@ -91,18 +93,20 @@ function CheckBldgShape(_mapidx, _pn, _bldg, _orient)
     increment_map_idx_by_orient(mpe, (2 + _orient) % 4)
     increment_map_idx_by_orient(mpe, (2 + _orient) % 4)
     increment_map_idx_by_orient(mpe, (2 + _orient) % 4)
+
     local c2d = Coord2D.new()
     map_idx_to_world_coord2d(mpe.Pos, c2d)
-    if (is_point_steeper_than(c2d, 300) == 0) then
+    if (is_point_steeper_than(c2d, 300) ~= 0) then
       buildable = false
       goto skip
     end
 
-    increment_map_idx_by_orient(mp1, (2 + _orient) % 4)
-    increment_map_idx_by_orient(mp2, (2 + _orient) % 4)
-    increment_map_idx_by_orient(mp3, (2 + _orient) % 4)
+    increment_map_idx_by_orient(mp1, (0 + _orient) % 4)
+    increment_map_idx_by_orient(mp2, (0 + _orient) % 4)
+    increment_map_idx_by_orient(mp3, (0 + _orient) % 4)
     increment_map_idx_by_orient(mp1, (2 + _orient + 1) % 4)
     increment_map_idx_by_orient(mp3, (2 + _orient - 1) % 4)
+
 
     if (is_map_cell_bldg_markable(gs.Players[_pn], mp1.Pos, 0, 0, 1, 0) == 0) then
       buildable = false
@@ -116,10 +120,10 @@ function CheckBldgShape(_mapidx, _pn, _bldg, _orient)
       buildable = false
       goto skip
     end
-    for i = 0, 3 do
-      increment_map_idx_by_orient(mp1, (2 + _orient -2) % 4)
-      increment_map_idx_by_orient(mp2, (2 + _orient -2) % 4)
-      increment_map_idx_by_orient(mp3, (2 + _orient -2) % 4)
+    for i = 0, 2 do
+      increment_map_idx_by_orient(mp1, (2 + _orient - 4) % 4)
+      increment_map_idx_by_orient(mp2, (2 + _orient - 4) % 4)
+      increment_map_idx_by_orient(mp3, (2 + _orient - 4) % 4)
       if (is_map_cell_bldg_markable(gs.Players[_pn], mp1.Pos, 0, 0, 1, 0) == 0) then
         buildable = false
         break
