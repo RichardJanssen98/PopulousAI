@@ -279,7 +279,7 @@ function AIShaman:handleShamanCombat ()
               if (is_thing_on_ground(shaman) == 1 and ((self.targetThatIsInAir == target and self.chanceToHitAir == 1) or self.targetThatIsInAir ~= target)) then
                 local blast = createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, target.Pos.D3, false, false)
                 blast.u.Spell.TargetThingIdx:set(target.ThingNum)
-                self.spellDelay = 24 + G_RANDOM(13)
+                self.spellDelay = 24 + G_RANDOM(25)
                 self.blastTrickDelay = 12
                 self.smartCastsBlast = self.smartCastsBlast + 1
 
