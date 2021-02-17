@@ -1,5 +1,7 @@
 local gs = gsi()
 
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibBldgShapes"
+
 _WILD_BUFFER = {
   [0] = {},
   [1] = {},
@@ -373,12 +375,8 @@ function ComputerPlayer:ProcessConverting()
     local pn = self.PlayerNum
     if (not self.ShamanThingIdx.ProxyIdx:isNull() and self:AnyWilds()) then
       if (self.ShamanThingIdx.WildConvTimeStamp < gs.Counts.ProcessThings) then
-        log("Processed Converting Phase")
-
         if (self.ShamanThingIdx.WildTargetIdx:isNull()) then
-          log("Not found")
           if (#_WILD_BUFFER[pn] > 0) then
-            log("There are wilds")
             local w = _WILD_BUFFER[pn][1]
 
             if (w == nil) then
@@ -522,49 +520,14 @@ function ComputerPlayer:ProcessBuilding()
         end
 
         if (self:GetHutsCount() < self.AttrPrefHuts and self:GetOnGoingBuildings() < self.AttrMaxBldgsOnGoing) then
-          local buildable = true
-          local orient = G_RANDOM(4)
-          local mp_ent = MapPosXZ.new()
-          mp_ent.Pos = mapIdx
-          for f=0,1 do
-            increment_map_idx_by_orient(mp_ent,(2+orient) % 4)
-          end
-          local c2d = Coord2D.new()
+          local res = false
 
-          map_idx_to_world_coord2d(mp_ent.Pos,c2d)
-          if (is_point_steeper_than(c2d,350) ~= 0) then
-            buildable = false
-            table.remove(_BUILD_BUFFER_IDXES[pn], 1)
-            goto process_bldg_skip
-          end
-
-          SearchMapCells(2,0,0,1,mapIdx,function(me)
-            if (not me.ShapeOrBldgIdx:isNull()) then
-              buildable = false
-              return false
+          for i = 0, 3 do
+            res = CheckBldgShape(mapIdx, pn, 1, i)
+            if (res) then
+              process_shape_map_elements(mapIdx, 1, i, pn, 2)
+              break
             end
-
-            if (self.FlagsCheckObstacles) then
-              if (me.Flags & (1<<1) ~= 0) then
-                buildable = false
-                return false
-              end
-            end
-
-            if (me.Flags & (1<<9) ~= 0 and me.Flags & (1<<10) ~= 0) then
-              buildable = false
-              return false
-            end
-            local l_idx = MAP_ELEM_PTR_2_IDX(me)
-            local a = is_map_cell_bldg_markable(gs.Players[pn],l_idx,0,0,1,0)
-            if (a == 0) then
-              buildable = false
-              return false
-            end
-            return true
-          end)
-          if (buildable) then
-            process_shape_map_elements(mapIdx, 1, orient, pn, 2)
           end
 
           table.remove(_BUILD_BUFFER_IDXES[pn], 1)

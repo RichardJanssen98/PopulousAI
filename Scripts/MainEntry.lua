@@ -26,12 +26,12 @@ local gns = gnsi()
 ResetSpellsCharging()
 
 function OnPlayerInit(pn,CP)
-  log(string.format("Player %d was initiated.", pn))
+  log(string.format("[CP] Player %d was initiated.", pn))
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 13)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 15)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
   CP.AttrPrefHuts = 25 + G_RANDOM(20)
-  CP.AttrMaxBldgsOnGoing = 8 + G_RANDOM(8)
+  CP.AttrMaxBldgsOnGoing = 5 + G_RANDOM(5)
 
   CP.FlagsAutoBuild = true
   CP.FlagsConstructBldgs = true
@@ -72,7 +72,7 @@ function OnPlayerInit(pn,CP)
     CP.ShamanThingIdx:SetStandPointXZ(52, 98)
 
     CP:SetRebuildableTower(70, 98, 0, 12)
-    CP:SetRebuildableTower(66, 100, 0, 140)
+    CP:SetRebuildableTower(66, 100, 0, 24)
     CP:SetRebuildableTower(56, 100, 0, 160)
     CP:SetRebuildableTower(52, 100, 0, 180)
     CP:SetRebuildableTower(62, 112, 0, 200)
@@ -94,15 +94,12 @@ end
 
 for i,CP in ipairs(AiPlayers) do
   if (AiPlayers[i] == nil) then
-    log("it's nil!" .. i)
     goto skip
   end
   local _S = CP:isValid()
-  local _STR = string.format("Is computer player valid? : %s", tostring(_S))
-  log(_STR)
   if (not _S) then
-    log("Computer Player was removed. Num: " .. CP.PlayerNum)
-    log("" .. i)
+    log("[CP] Computer Player was removed. Num: " .. CP.PlayerNum)
+
     --This is important to set it to nil, instead of table.remove()
     AiPlayers[i] = nil
   end
