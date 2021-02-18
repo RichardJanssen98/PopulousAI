@@ -32,6 +32,9 @@ function OnPlayerInit(pn,CP)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
   CP.AttrPrefHuts = 35
   CP.AttrPrefTempleTrains = 1
+  CP.AttrPrefSpyTrains = 1
+  CP.AttrPrefWarriorTrains = 1
+  CP.AttrPrefFirewarriorTrains = 1
   CP.AttrMaxBldgsOnGoing = 5 + G_RANDOM(5)
 
   CP.FlagsAutoBuild = true
@@ -82,6 +85,30 @@ function OnPlayerInit(pn,CP)
     CP:SetRebuildableTower(36, 108, 0, 260)
     CP:SetRebuildableTower(32, 112, 0, 280)
     CP:SetRebuildableTower(28, 116, 0, 300)
+  end
+  if (pn == 3) then
+    CP.ConvManager:AddArea(212, 124, 2)
+    CP.ConvManager:AddArea(212, 134, 2)
+    CP.ConvManager:AddArea(240, 112, 2)
+    CP.ConvManager:AddArea(250, 114, 2)
+    CP.ConvManager:AddArea(248, 84, 3)
+    CP.ConvManager:AddArea(218, 80, 2)
+    CP.ConvManager:AddArea(198, 64, 2)
+
+    CP.ShamanThingIdx:SetStandPointXZ(222, 104)
+
+    CP:SetRebuildableTower(204, 100, 0, 6)
+    CP:SetRebuildableTower(200, 96, 0, 12)
+    CP:SetRebuildableTower(226, 106, 0, 64)
+    CP:SetRebuildableTower(222, 106, 0, 96)
+    CP:SetRebuildableTower(218, 106, 0, 128)
+    CP:SetRebuildableTower(212, 114, 0, 164)
+    CP:SetRebuildableTower(212, 120, 0, 196)
+    CP:SetRebuildableTower(212, 126, 0, 234)
+    CP:SetRebuildableTower(234, 110, 0, 256)
+    CP:SetRebuildableTower(238, 114, 0, 290)
+    CP:SetRebuildableTower(244, 118, 0, 314)
+    CP:SetRebuildableTower(248, 122, 0, 346)
   end
 end
 
@@ -134,7 +161,7 @@ function OnTurn()
   -- local s = getShaman(0)
   -- if (s ~= nil) then
   --   if isEvery2Pow(3) then
-  --     CheckBldgShape(world_coord2d_to_map_idx(s.Pos.D2), s.Owner, 1, index)
+  --     CheckBldgShape(world_coord2d_to_map_idx(s.Pos.D2), s.Owner, 4, index)
   --     index = (index + 1) % 4
   --   end
   -- end

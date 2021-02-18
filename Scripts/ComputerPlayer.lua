@@ -24,6 +24,39 @@ _BUILD_BUFFER_IDXES = {
   [7] = {}
 }
 
+_SHAPE_WARRIOR_BUFFER = {
+  [0] = {},
+  [1] = {},
+  [2] = {},
+  [3] = {},
+  [4] = {},
+  [5] = {},
+  [6] = {},
+  [7] = {}
+}
+
+_SHAPE_FIREWARRIOR_BUFFER = {
+  [0] = {},
+  [1] = {},
+  [2] = {},
+  [3] = {},
+  [4] = {},
+  [5] = {},
+  [6] = {},
+  [7] = {}
+}
+
+_SHAPE_SPY_BUFFER = {
+  [0] = {},
+  [1] = {},
+  [2] = {},
+  [3] = {},
+  [4] = {},
+  [5] = {},
+  [6] = {},
+  [7] = {}
+}
+
 _SHAPE_TEMPLE_BUFFER = {
   [0] = {},
   [1] = {},
@@ -329,6 +362,7 @@ function ComputerPlayer:Create(_PN)
   self.FlagsConstructBldgs = false
   self.FlagsAutoBuild = false
   self.FlagsCheckObstacles = false
+  self.FlagsRandomOrientation = false
 
   return self
 end
@@ -339,6 +373,18 @@ end
 
 function ComputerPlayer:GetTemplesCount()
   return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[5] + #_SHAPE_TEMPLE_BUFFER[self.PlayerNum]
+end
+
+function ComputerPlayer:GetSpyTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[6] + #_SHAPE_SPY_BUFFER[self.PlayerNum]
+end
+
+function ComputerPlayer:GetWarriorTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[7] + #_SHAPE_WARRIOR_BUFFER[self.PlayerNum]
+end
+
+function ComputerPlayer:GetFireTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[8] + #_SHAPE_FIREWARRIOR_BUFFER[self.PlayerNum]
 end
 
 function ComputerPlayer:GetShotsCount(spell)
@@ -447,6 +493,8 @@ local function GotoBuild(_thing,shape,idx)
   add_persons_command(_thing,cmd,idx)
 end
 
+--NEEDS A COMPLETE REWORK COZ IT'S EXPENSIVE. \/\/\/\/\/
+
 function ComputerPlayer:ProcessShapes()
   if (self.isActive) then
     local pn = self.PlayerNum
@@ -464,7 +512,7 @@ function ComputerPlayer:ProcessShapes()
       end
       ::process_part_bldg_skip::
     end
-    if (#_SHAPE_HUTS_BUFFER[pn] > 0 or #_SHAPE_TEMPLE_BUFFER[pn] > 0) then
+    if (#_SHAPE_HUTS_BUFFER[pn] > 0 or #_SHAPE_SPY_BUFFER[pn] > 0 or #_SHAPE_FIREWARRIOR_BUFFER[pn] > 0 or #_SHAPE_WARRIOR_BUFFER[pn] > 0 or #_SHAPE_TEMPLE_BUFFER[pn] > 0) then
       local t_brave = nil
       if (self.FlagsAutoBuild) then
         t_brave = ProcessGlobalSpecialList(pn, 0, function(t)
@@ -475,6 +523,96 @@ function ComputerPlayer:ProcessShapes()
           end
           return true
         end)
+      end
+      for i,shp in ipairs(_SHAPE_SPY_BUFFER[pn]) do
+        if (_SHAPE_SPY_BUFFER[pn][i] == nil) then
+          table.remove(_SHAPE_SPY_BUFFER[pn], i)
+          goto process_shape_spy_skip
+        end
+
+        if (shp.Type ~= 9) then
+          table.remove(_SHAPE_SPY_BUFFER[pn], i)
+          goto process_shape_spy_skip
+        end
+
+        if (shp.Owner ~= pn) then
+          table.remove(_SHAPE_SPY_BUFFER[pn], i)
+          goto process_shape_spy_skip
+        end
+
+        if (not shp.u.Shape.BldgThingIdx:isNull()) then
+          table.remove(_SHAPE_SPY_BUFFER[pn], i)
+          goto process_shape_spy_skip
+        end
+
+        if (t_brave ~= nil) then
+          if (shp.u.Shape.NumWorkers < 2) then
+            GotoBuild(t_brave, shp, 0)
+            t_brave = nil
+          end
+        end
+
+        ::process_shape_spy_skip::
+      end
+      for i,shp in ipairs(_SHAPE_WARRIOR_BUFFER[pn]) do
+        if (_SHAPE_WARRIOR_BUFFER[pn][i] == nil) then
+          table.remove(_SHAPE_WARRIOR_BUFFER[pn], i)
+          goto process_shape_warrior_skip
+        end
+
+        if (shp.Type ~= 9) then
+          table.remove(_SHAPE_WARRIOR_BUFFER[pn], i)
+          goto process_shape_warrior_skip
+        end
+
+        if (shp.Owner ~= pn) then
+          table.remove(_SHAPE_WARRIOR_BUFFER[pn], i)
+          goto process_shape_warrior_skip
+        end
+
+        if (not shp.u.Shape.BldgThingIdx:isNull()) then
+          table.remove(_SHAPE_WARRIOR_BUFFER[pn], i)
+          goto process_shape_warrior_skip
+        end
+
+        if (t_brave ~= nil) then
+          if (shp.u.Shape.NumWorkers < 2) then
+            GotoBuild(t_brave, shp, 0)
+            t_brave = nil
+          end
+        end
+
+        ::process_shape_warrior_skip::
+      end
+      for i,shp in ipairs(_SHAPE_FIREWARRIOR_BUFFER[pn]) do
+        if (_SHAPE_FIREWARRIOR_BUFFER[pn][i] == nil) then
+          table.remove(_SHAPE_FIREWARRIOR_BUFFER[pn], i)
+          goto process_shape_fwarrior_skip
+        end
+
+        if (shp.Type ~= 9) then
+          table.remove(_SHAPE_FIREWARRIOR_BUFFER[pn], i)
+          goto process_shape_fwarrior_skip
+        end
+
+        if (shp.Owner ~= pn) then
+          table.remove(_SHAPE_FIREWARRIOR_BUFFER[pn], i)
+          goto process_shape_fwarrior_skip
+        end
+
+        if (not shp.u.Shape.BldgThingIdx:isNull()) then
+          table.remove(_SHAPE_FIREWARRIOR_BUFFER[pn], i)
+          goto process_shape_fwarrior_skip
+        end
+
+        if (t_brave ~= nil) then
+          if (shp.u.Shape.NumWorkers < 2) then
+            GotoBuild(t_brave, shp, 0)
+            t_brave = nil
+          end
+        end
+
+        ::process_shape_fwarrior_skip::
       end
       for i,shp in ipairs(_SHAPE_TEMPLE_BUFFER[pn]) do
         if (_SHAPE_TEMPLE_BUFFER[pn][i] == nil) then
@@ -564,6 +702,51 @@ function ComputerPlayer:ProcessBuilding()
           goto process_bldg_skip
         end
 
+        if (self:GetFireTrainsCount() < self.AttrPrefFirewarriorTrains) then
+          local res = false
+
+          for i = 0, 3 do
+            res = CheckBldgShape(mapIdx, pn, 8, i)
+            if (res) then
+              process_shape_map_elements(mapIdx, 8, i, pn, 2)
+              break
+            end
+          end
+
+          table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+          goto process_bldg_skip
+        end
+
+        if (self:GetWarriorTrainsCount() < self.AttrPrefWarriorTrains) then
+          local res = false
+
+          for i = 0, 3 do
+            res = CheckBldgShape(mapIdx, pn, 7, i)
+            if (res) then
+              process_shape_map_elements(mapIdx, 7, i, pn, 2)
+              break
+            end
+          end
+
+          table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+          goto process_bldg_skip
+        end
+
+        if (self:GetSpyTrainsCount() < self.AttrPrefSpyTrains) then
+          local res = false
+
+          for i = 0, 3 do
+            res = CheckBldgShape(mapIdx, pn, 6, i)
+            if (res) then
+              process_shape_map_elements(mapIdx, 6, i, pn, 2)
+              break
+            end
+          end
+
+          table.remove(_BUILD_BUFFER_IDXES[pn], 1)
+          goto process_bldg_skip
+        end
+
         if (self:GetTemplesCount() < self.AttrPrefTempleTrains) then
           local res = false
 
@@ -578,6 +761,7 @@ function ComputerPlayer:ProcessBuilding()
           table.remove(_BUILD_BUFFER_IDXES[pn], 1)
           goto process_bldg_skip
         end
+
         if (self:GetHutsCount() < self.AttrPrefHuts and self:GetOnGoingBuildings() < self.AttrMaxBldgsOnGoing) then
           local res = false
 
@@ -626,6 +810,18 @@ end
 function AddShapeToQueue(t,pn,bldgModel)
   if (bldgModel == 1) then
     table.insert(_SHAPE_HUTS_BUFFER[pn], t)
+  end
+
+  if (bldgModel == 8) then
+    table.insert(_SHAPE_FIREWARRIOR_BUFFER[pn], t)
+  end
+
+  if (bldgModel == 7) then
+    table.insert(_SHAPE_WARRIOR_BUFFER[pn], t)
+  end
+
+  if (bldgModel == 6) then
+    table.insert(_SHAPE_SPY_BUFFER[pn], t)
   end
 
   if (bldgModel == 5) then
