@@ -367,8 +367,48 @@ function ComputerPlayer:Create(_PN)
   return self
 end
 
+function ComputerPlayer:GetNumOfBraves()
+  return gs.Players[self.PlayerNum].NumPeopleOfType[2]
+end
+
+function ComputerPlayer:GetNumOfWarriors()
+  return gs.Players[self.PlayerNum].NumPeopleOfType[3]
+end
+
+function ComputerPlayer:GetNumOfPreachers()
+  return gs.Players[self.PlayerNum].NumPeopleOfType[4]
+end
+
+function ComputerPlayer:GetNumOfSpies()
+  return gs.Players[self.PlayerNum].NumPeopleOfType[5]
+end
+
+function ComputerPlayer:GetNumOfFireWarriors()
+  return gs.Players[self.PlayerNum].NumPeopleOfType[6]
+end
+
+function ComputerPlayer:GetBuiltHutsCount()
+  return gs.Players[self.PlayerNum].NumBuildingsOfType[1] + gs.Players[self.PlayerNum].NumBuildingsOfType[2] + gs.Players[self.PlayerNum].NumBuildingsOfType[3]
+end
+
 function ComputerPlayer:GetHutsCount()
   return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[1] + gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[2] + gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[3] + #_SHAPE_HUTS_BUFFER[self.PlayerNum]
+end
+
+function ComputerPlayer:GetBuiltTemplesCount()
+  return gs.Players[self.PlayerNum].NumBuildingsOfType[5]
+end
+
+function ComputerPlayer:GetBuiltSpyTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuildingsOfType[6]
+end
+
+function ComputerPlayer:GetBuiltWarriorTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuildingsOfType[7]
+end
+
+function ComputerPlayer:GetBuiltFireTrainsCount()
+  return gs.Players[self.PlayerNum].NumBuildingsOfType[8]
 end
 
 function ComputerPlayer:GetTemplesCount()
@@ -419,6 +459,67 @@ end
 function ComputerPlayer:SetRebuildableTower(x, z, orient, ticks)
   local t_tower = AiTower:CreateTower(x, z, orient, self.PlayerNum, ticks)
   table.insert(_REBUILDABLE_TOWERS[self.PlayerNum], t_tower)
+end
+
+local function GotoTrain(_pers, _train)
+  _pers.Flags = _pers.Flags | (1<<4)
+  local cmd = Commands.new()
+  cmd.CommandType = 8
+  cmd.u.TargetIdx:set(_train.ThingNum)
+  add_persons_command(_pers, cmd, 0)
+end
+
+function ComputerPlayer:TrainPeople(_persModel, _amount)
+  local count = _amount
+  if (_persModel == 3) then
+    if (self:GetBuiltWarriorTrainsCount() > 0) then
+      local t_warrior_trains = {}
+      local t_braves = {}
+      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+        if (t.Model == 2) then
+          if (count > 0) then
+            if (get_thing_curr_cmd_list_ptr(t) == nil) then
+              table.insert(t_braves, t)
+              count = count - 1
+              return true
+            end
+          end
+        end
+        return true
+      end)
+      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+        if (t.Model == 7) then
+          if (t.u.Bldg.ShapeThingIdx:isNull()) then
+            table.insert(t_warrior_trains, t)
+            return true
+          end
+        end
+        return true
+      end)
+      if (#t_warrior_trains > 0) then
+
+        local split = math.floor(#t_braves / #t_warrior_trains)
+        local remainder = #t_braves % #t_warrior_trains
+        --log("c: " .. count .. " trains: " .. #t_warrior_trains .. " result: " .. split .. " remainder: " .. remainder)
+        local idx = 1
+        --log("amount: " .. #t_warrior_trains)
+        for i,t_thing in ipairs(t_braves) do
+          --log("idx: " .. idx)
+          GotoTrain(t_thing, t_warrior_trains[idx])
+
+          idx = (idx + 1) % #t_warrior_trains
+          if (idx == 0) then idx = #t_warrior_trains end
+          t_thing = nil
+        end
+        -- for i,train in ipairs(t_warrior_trains) do
+        --   if (#t_braves > 0) then
+        --     GotoTrain(t_braves[1], train)
+        --     table.remove(t_braves, 1)
+        --   end
+        -- end
+      end
+    end
+  end
 end
 
 function ComputerPlayer:ProcessRebuildableTowers()
@@ -504,7 +605,7 @@ function ComputerPlayer:ProcessShapes()
         table.remove(_NEW_HUTS_BUILT_BUFFER[pn], 1)
         goto process_part_bldg_skip
       end
-      if (isFlagIdOn(t_bldg.u.Bldg.Flags,3)) then
+      if (isFlagIdOn(t_bldg.u.Bldg.Flags, 3)) then
         if (OnBuildingComplete ~= nil and type(OnBuildingComplete) == 'function') then
           CallHook(OnBuildingComplete, t_bldg)
           table.remove(_NEW_HUTS_BUILT_BUFFER[pn], 1)

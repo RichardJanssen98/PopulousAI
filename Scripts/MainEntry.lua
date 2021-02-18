@@ -31,11 +31,11 @@ function OnPlayerInit(pn,CP)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 15)
   ScanAreaForBldg(pn, world_coord3d_to_map_idx(gs.Players[pn].ReincarnSiteCoord), 17)
   CP.AttrPrefHuts = 35
-  CP.AttrPrefTempleTrains = 1
-  CP.AttrPrefSpyTrains = 1
+  CP.AttrPrefTempleTrains = 0
+  CP.AttrPrefSpyTrains = 0
   CP.AttrPrefWarriorTrains = 1
-  CP.AttrPrefFirewarriorTrains = 1
-  CP.AttrMaxBldgsOnGoing = 5 + G_RANDOM(5)
+  CP.AttrPrefFirewarriorTrains = 0
+  CP.AttrMaxBldgsOnGoing = 8 + G_RANDOM(5)
 
   CP.FlagsAutoBuild = true
   CP.FlagsConstructBldgs = true
@@ -155,6 +155,21 @@ end
 
 local DEBUG_STR = string.format("MainEntry.lua has been successfully loaded.")
 local index = 0
+
+function _GotoC3d(_thing, _c3d, flag, idx)
+  _thing.Flags = _thing.Flags | (1<<4)
+  local cmd = Commands.new()
+  cmd.CommandType = 3
+  if (flag) then
+    cmd.Flags = cmd.Flags | (1<<7)
+  end
+  cmd.u.TargetCoord.Xpos = _c3d.Xpos
+  cmd.u.TargetCoord.Zpos = _c3d.Zpos
+  add_persons_command(_thing, cmd, idx)
+end
+
+local centre = MAP_XZ_2_WORLD_XYZ(10, 132)
+
 function OnTurn()
   local _TURN = GetTurn()
 
@@ -171,6 +186,18 @@ function OnTurn()
     if isEvery2Pow(1) then
       for i,CP in ipairs(AiPlayers) do
         CP:ProcessBuilding()
+      end
+    end
+
+    if isEvery2Pow(9) then
+      for i,CP in ipairs(AiPlayers) do
+        if (CP:GetNumOfBraves() > 40 and CP:GetNumOfWarriors() < 16 and CP:GetBuiltWarriorTrainsCount() > 0) then
+          CP:TrainPeople(3, 3)
+        end
+
+        if (CP:GetBuiltHutsCount() > 10 and CP.AttrPrefWarriorTrains == 1) then
+          CP.AttrPrefWarriorTrains = 2
+        end
       end
     end
 
