@@ -40,6 +40,8 @@ function OnPlayerInit(pn,CP)
   CP.FlagsConstructBldgs = true
   CP.FlagsCheckObstacles = true
 
+  CP:AddSpellQueue(17, 3)
+  CP:AddSpellQueue(2, 2)
   CP:AddSpellQueue(4, 1)
   CP:AddSpellQueue(14, 1)
   CP:AddSpellQueue(5, 2)
