@@ -443,10 +443,6 @@ function ComputerPlayer:GetFireTrainsCount()
   return gs.Players[self.PlayerNum].NumBuiltOrPartBuiltBuildingsOfType[8] + #_SHAPE_FIREWARRIOR_BUFFER[self.PlayerNum]
 end
 
-function ComputerPlayer:GetShotsCount(spell)
-  return gs.ThisLevelInfo.PlayerThings[self.PlayerNum].SpellsAvailableOnce[spell] & 15
-end
-
 function ComputerPlayer:GetOnGoingBuildings()
   return #_SHAPE_HUTS_BUFFER[self.PlayerNum]
   --return gs.Players[self.PlayerNum].NumBuildingMarkers
@@ -607,7 +603,7 @@ function ComputerPlayer:ProcessConverting()
         if (not self.ShamanThingIdx.WildTargetIdx:isNull()) then
           local w = self.ShamanThingIdx.WildTargetIdx:get()
           if (w.Substate ~= 3) then
-            if (self:GetShotsCount(17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
+            if (getSpellShots(self.PlayerNum, 17) > 0 and (not self.ShamanThingIdx:isCastingSpell())) then
               local s = self.ShamanThingIdx.ProxyIdx:get()
               if (get_world_dist_xyz(s.Pos.D3, w.Pos.D3) < (8192 + math.ceil(self.ShamanThingIdx.ProxyIdx:get().Pos.D3.Ypos * 10))) then
                 remove_all_persons_commands(s)
