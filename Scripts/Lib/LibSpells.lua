@@ -4,6 +4,14 @@ function EnableSpellCharging(_pn, _spell)
   _g.ThisLevelInfo.PlayerThings[_pn].SpellsNotCharging = _g.ThisLevelInfo.PlayerThings[_pn].SpellsNotCharging ~ (1<<_spell-1)
 end
 
+function isSpellCharging(_pn, _spell)
+  return (_g.ThisLevelInfo.PlayerThings[_pn].SpellsNotCharging & (1 << _spell-1) == 0)
+end
+
+function getSpellShots(_pn, _spell)
+  return _g.ThisLevelInfo.PlayerThings[_pn].SpellsAvailableOnce[_spell] & 15
+end
+
 function DisableSpellCharging(_pn, _spell)
   _g.ThisLevelInfo.PlayerThings[_pn].SpellsNotCharging = _g.ThisLevelInfo.PlayerThings[_pn].SpellsNotCharging | (1<<_spell-1)
 end

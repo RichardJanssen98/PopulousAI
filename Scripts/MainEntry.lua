@@ -17,7 +17,6 @@ import(Module_Commands)
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibHooks"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibGameTurn"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibFlags"
-require "Mods\\PopulousAi\\Scripts\\Lib\\LibSpells"
 require "Mods\\PopulousAi\\Scripts\\ComputerPlayer"
 
 local gs = gsi()
@@ -41,6 +40,20 @@ function OnPlayerInit(pn,CP)
   CP.FlagsConstructBldgs = true
   CP.FlagsCheckObstacles = true
 
+  CP:AddSpellQueue(4, 1)
+  CP:AddSpellQueue(14, 1)
+  CP:AddSpellQueue(5, 2)
+  CP:AddSpellQueue(12, 1)
+  CP:AddSpellQueue(14, 2)
+  CP:AddSpellQueue(5, 4)
+  CP:AddSpellQueue(4, 3)
+
+  for i = 2, 19 do
+    EnableSpell(pn, i)
+    DisableSpellCharging(pn, i)
+  end
+
+  EnableSpellCharging(pn, 17)
   DisableSpellCharging(pn, 2)
   DisableSpellCharging(pn, 10)
 
@@ -204,6 +217,7 @@ function OnTurn()
     if isEvery2Pow(4) then
       for i,CP in ipairs(AiPlayers) do
         CP.ShamanThingIdx:Process()
+        CP:ProcessSpellCharging()
       end
     end
 

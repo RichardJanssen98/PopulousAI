@@ -1,6 +1,7 @@
 local gs = gsi()
 
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibBldgShapes"
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibSpells"
 
 _WILD_BUFFER = {
   [0] = {},
@@ -100,6 +101,18 @@ _REBUILDABLE_TOWERS = {
   [6] = {},
   [7] = {}
 }
+
+SpellQueue = {}
+SpellQueue.__index = SpellQueue
+
+function SpellQueue:Register(_spell, _shots)
+  local self = setmetatable({}, SpellQueue)
+
+  self.SQSpellModel = _spell or 0
+  self.SQSpellShots = _shots or 0
+
+  return self
+end
 
 AiTower = {}
 AiTower.__index = AiTower
@@ -350,6 +363,9 @@ function ComputerPlayer:Create(_PN)
   --Converting manager
   self.ConvManager = ConvertManager:Register(_PN)
 
+  --Spell charging table
+  self.SpellPriorityTable = {}
+
   --Building attributes
   self.AttrMaxBldgsOnGoing = 0
   self.AttrPrefHuts = 0
@@ -446,6 +462,33 @@ end
 
 function ComputerPlayer:Activate()
   self.isActive = true
+end
+
+function ComputerPlayer:AddSpellQueue(_spell, _num_shots)
+  local sq = SpellQueue:Register(_spell, _num_shots)
+  table.insert(self.SpellPriorityTable, sq)
+end
+
+function ComputerPlayer:ProcessSpellCharging()
+  if (#self.SpellPriorityTable > 0) then
+    local need_to_charge = false
+    for i,SQ in ipairs(self.SpellPriorityTable) do
+      log("yes2")
+      if (getSpellShots(self.PlayerNum, SQ.SQSpellModel) < SQ.SQSpellShots) then
+        need_to_charge = true
+      end
+      if (need_to_charge) then
+        if (isSpellCharging(self.PlayerNum, SQ.SQSpellModel)) then
+          break
+        end
+        EnableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
+        break
+      end
+      if (not need_to_charge) then
+        DisableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
+      end
+    end
+  end
 end
 
 -- X, Z, Angle, TicksBeforeChecking
