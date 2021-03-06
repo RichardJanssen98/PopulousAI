@@ -32,8 +32,8 @@ function OnPlayerInit(pn,CP)
   CP.AttrPrefHuts = 35
   CP.AttrPrefTempleTrains = 0
   CP.AttrPrefSpyTrains = 0
-  CP.AttrPrefWarriorTrains = 1
-  CP.AttrPrefFirewarriorTrains = 0
+  CP.AttrPrefWarriorTrains = 0
+  CP.AttrPrefFirewarriorTrains = 1
   CP.AttrMaxBldgsOnGoing = 8 + G_RANDOM(5)
 
   CP.FlagsAutoBuild = true
@@ -206,12 +206,16 @@ function OnTurn()
 
     if isEvery2Pow(9) then
       for i,CP in ipairs(AiPlayers) do
-        if (CP:GetNumOfBraves() > 40 and CP:GetNumOfWarriors() < 16 and CP:GetBuiltWarriorTrainsCount() > 0) then
-          CP:TrainPeople(3, 3)
+        if (CP:GetNumOfFireWarriors() > 1) then
+          CP:PopulateDrumTowers()
         end
 
-        if (CP:GetBuiltHutsCount() > 10 and CP.AttrPrefWarriorTrains == 1) then
-          CP.AttrPrefWarriorTrains = 2
+        if (CP:GetNumOfBraves() > 40 and CP:GetNumOfFireWarriors() < 16 and CP:GetBuiltWarriorTrainsCount() > 0) then
+          CP:TrainPeople(6, 4)
+        end
+
+        if (CP:GetBuiltHutsCount() > 10 and CP.AttrPrefFirewarriorTrains == 1) then
+          CP.AttrPrefWarriorTrains = 1
         end
       end
     end

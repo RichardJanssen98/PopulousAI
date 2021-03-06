@@ -469,7 +469,6 @@ function ComputerPlayer:ProcessSpellCharging()
   if (#self.SpellPriorityTable > 0) then
     local need_to_charge = false
     for i,SQ in ipairs(self.SpellPriorityTable) do
-      log("yes2")
       if (getSpellShots(self.PlayerNum, SQ.SQSpellModel) < SQ.SQSpellShots) then
         need_to_charge = true
       end
@@ -508,6 +507,14 @@ local function GotoTrain(_pers, _train)
   add_persons_command(_pers, cmd, 0)
 end
 
+local function GotoBldg(_pers, _bldg)
+  _pers.Flags = _pers.Flags | (1<<4)
+  local cmd = Commands.new()
+  cmd.CommandType = 8
+  cmd.u.TargetIdx:set(_bldg.ThingNum)
+  add_persons_command(_pers, cmd, 0)
+end
+
 function ComputerPlayer:TrainPeople(_persModel, _amount)
   local count = _amount
   if (_persModel == 3) then
@@ -536,26 +543,165 @@ function ComputerPlayer:TrainPeople(_persModel, _amount)
         return true
       end)
       if (#t_warrior_trains > 0) then
-
         local split = math.floor(#t_braves / #t_warrior_trains)
         local remainder = #t_braves % #t_warrior_trains
-        --log("c: " .. count .. " trains: " .. #t_warrior_trains .. " result: " .. split .. " remainder: " .. remainder)
         local idx = 1
-        --log("amount: " .. #t_warrior_trains)
         for i,t_thing in ipairs(t_braves) do
-          --log("idx: " .. idx)
           GotoTrain(t_thing, t_warrior_trains[idx])
-
           idx = (idx + 1) % #t_warrior_trains
           if (idx == 0) then idx = #t_warrior_trains end
           t_thing = nil
         end
-        -- for i,train in ipairs(t_warrior_trains) do
-        --   if (#t_braves > 0) then
-        --     GotoTrain(t_braves[1], train)
-        --     table.remove(t_braves, 1)
-        --   end
-        -- end
+      end
+    end
+  end
+  if (_persModel == 4) then
+    if (self:GetBuiltTemplesCoun() > 0) then
+      local t_temples = {}
+      local t_braves = {}
+      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+        if (t.Model == 2) then
+          if (count > 0) then
+            if (get_thing_curr_cmd_list_ptr(t) == nil) then
+              table.insert(t_braves, t)
+              count = count - 1
+              return true
+            end
+          end
+        end
+        return true
+      end)
+      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+        if (t.Model == 5) then
+          if (t.u.Bldg.ShapeThingIdx:isNull()) then
+            table.insert(t_temples, t)
+            return true
+          end
+        end
+        return true
+      end)
+      if (#t_temples > 0) then
+        local split = math.floor(#t_braves / #t_temples)
+        local remainder = #t_braves % #t_temples
+        local idx = 1
+        for i,t_thing in ipairs(t_braves) do
+          GotoTrain(t_thing, t_temples[idx])
+          idx = (idx + 1) % #t_temples
+          if (idx == 0) then idx = #t_temples end
+          t_thing = nil
+        end
+      end
+    end
+  end
+  if (_persModel == 5) then
+    if (self:GetBuiltSpyTrainsCount() > 0) then
+      local t_spy_trains = {}
+      local t_braves = {}
+      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+        if (t.Model == 2) then
+          if (count > 0) then
+            if (get_thing_curr_cmd_list_ptr(t) == nil) then
+              table.insert(t_braves, t)
+              count = count - 1
+              return true
+            end
+          end
+        end
+        return true
+      end)
+      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+        if (t.Model == 6) then
+          if (t.u.Bldg.ShapeThingIdx:isNull()) then
+            table.insert(t_spy_trains, t)
+            return true
+          end
+        end
+        return true
+      end)
+      if (#t_spy_trains > 0) then
+        local split = math.floor(#t_braves / #t_spy_trains)
+        local remainder = #t_braves % #t_spy_trains
+        local idx = 1
+        for i,t_thing in ipairs(t_braves) do
+          GotoTrain(t_thing, t_spy_trains[idx])
+          idx = (idx + 1) % #t_spy_trains
+          if (idx == 0) then idx = #t_spy_trains end
+          t_thing = nil
+        end
+      end
+    end
+  end
+  if (_persModel == 6) then
+    if (self:GetBuiltFireTrainsCount() > 0) then
+      local t_firewarrior_trains = {}
+      local t_braves = {}
+      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+        if (t.Model == 2) then
+          if (count > 0) then
+            if (get_thing_curr_cmd_list_ptr(t) == nil) then
+              table.insert(t_braves, t)
+              count = count - 1
+              return true
+            end
+          end
+        end
+        return true
+      end)
+      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+        if (t.Model == 8) then
+          if (t.u.Bldg.ShapeThingIdx:isNull()) then
+            table.insert(t_firewarrior_trains, t)
+            return true
+          end
+        end
+        return true
+      end)
+      if (#t_firewarrior_trains > 0) then
+        local split = math.floor(#t_braves / #t_firewarrior_trains)
+        local remainder = #t_braves % #t_firewarrior_trains
+        local idx = 1
+        for i,t_thing in ipairs(t_braves) do
+          GotoTrain(t_thing, t_firewarrior_trains[idx])
+          idx = (idx + 1) % #t_firewarrior_trains
+          if (idx == 0) then idx = #t_firewarrior_trains end
+          t_thing = nil
+        end
+      end
+    end
+  end
+end
+
+function ComputerPlayer:PopulateDrumTowers()
+  local t_firewarriors = {}
+  local t_empty_towers = {}
+  ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+    if (t.Model == 6) then
+      if (get_thing_curr_cmd_list_ptr(t) == nil) then
+        if (t.Flags & (1<<23) == 0) then
+          table.insert(t_firewarriors, t)
+          return true
+        end
+      end
+    end
+    return true
+  end)
+  ProcessGlobalSpecialList(self.PlayerNum, 1, function(b)
+    if (b.Model == 4) then
+      if (b.State == 2) then
+        if (b.u.Bldg.Dwellers[0]:isNull()) then
+          table.insert(t_empty_towers, b)
+          return true
+        end
+      end
+    end
+    return true
+  end)
+  if (#t_empty_towers > 0) then
+    for i,tower in ipairs(t_empty_towers) do
+      if (#t_firewarriors > 0) then
+        GotoBldg(t_firewarriors[1], tower)
+        table.remove(t_firewarriors, 1)
+        tower = nil
       end
     end
   end
