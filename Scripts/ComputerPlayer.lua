@@ -2,6 +2,7 @@ local gs = gsi()
 
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibBldgShapes"
 require "Mods\\PopulousAi\\Scripts\\Lib\\LibSpells"
+require "Mods\\PopulousAi\\Scripts\\Lib\\LibCommands"
 
 _WILD_BUFFER = {
   [0] = {},
@@ -466,21 +467,23 @@ function ComputerPlayer:AddSpellQueue(_spell, _num_shots)
 end
 
 function ComputerPlayer:ProcessSpellCharging()
-  if (#self.SpellPriorityTable > 0) then
-    local need_to_charge = false
-    for i,SQ in ipairs(self.SpellPriorityTable) do
-      if (getSpellShots(self.PlayerNum, SQ.SQSpellModel) < SQ.SQSpellShots) then
-        need_to_charge = true
-      end
-      if (need_to_charge) then
-        if (isSpellCharging(self.PlayerNum, SQ.SQSpellModel)) then
+  if (self.isActive) then
+    if (#self.SpellPriorityTable > 0) then
+      local need_to_charge = false
+      for i,SQ in ipairs(self.SpellPriorityTable) do
+        if (getSpellShots(self.PlayerNum, SQ.SQSpellModel) < SQ.SQSpellShots) then
+          need_to_charge = true
+        end
+        if (need_to_charge) then
+          if (isSpellCharging(self.PlayerNum, SQ.SQSpellModel)) then
+            break
+          end
+          EnableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
           break
         end
-        EnableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
-        break
-      end
-      if (not need_to_charge) then
-        DisableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
+        if (not need_to_charge) then
+          DisableSpellCharging(self.PlayerNum, SQ.SQSpellModel)
+        end
       end
     end
   end
@@ -499,172 +502,158 @@ function ComputerPlayer:SetRebuildableTower(x, z, orient, ticks)
   table.insert(_REBUILDABLE_TOWERS[self.PlayerNum], t_tower)
 end
 
-local function GotoTrain(_pers, _train)
-  _pers.Flags = _pers.Flags | (1<<4)
-  local cmd = Commands.new()
-  cmd.CommandType = 8
-  cmd.u.TargetIdx:set(_train.ThingNum)
-  add_persons_command(_pers, cmd, 0)
-end
-
-local function GotoBldg(_pers, _bldg)
-  _pers.Flags = _pers.Flags | (1<<4)
-  local cmd = Commands.new()
-  cmd.CommandType = 8
-  cmd.u.TargetIdx:set(_bldg.ThingNum)
-  add_persons_command(_pers, cmd, 0)
-end
-
 function ComputerPlayer:TrainPeople(_persModel, _amount)
-  local count = _amount
-  if (_persModel == 3) then
-    if (self:GetBuiltWarriorTrainsCount() > 0) then
-      local t_warrior_trains = {}
-      local t_braves = {}
-      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
-        if (t.Model == 2) then
-          if (count > 0) then
-            if (get_thing_curr_cmd_list_ptr(t) == nil) then
-              table.insert(t_braves, t)
-              count = count - 1
+  if (self.isActive) then
+    local count = _amount
+    if (_persModel == 3) then
+      if (self:GetBuiltWarriorTrainsCount() > 0) then
+        local t_warrior_trains = {}
+        local t_braves = {}
+        ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+          if (t.Model == 2) then
+            if (count > 0) then
+              if (get_thing_curr_cmd_list_ptr(t) == nil) then
+                table.insert(t_braves, t)
+                count = count - 1
+                return true
+              end
+            end
+          end
+          return true
+        end)
+        ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+          if (t.Model == 7) then
+            if (t.u.Bldg.ShapeThingIdx:isNull()) then
+              table.insert(t_warrior_trains, t)
               return true
             end
           end
-        end
-        return true
-      end)
-      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
-        if (t.Model == 7) then
-          if (t.u.Bldg.ShapeThingIdx:isNull()) then
-            table.insert(t_warrior_trains, t)
-            return true
+          return true
+        end)
+        if (#t_warrior_trains > 0) then
+          local split = math.floor(#t_braves / #t_warrior_trains)
+          local remainder = #t_braves % #t_warrior_trains
+          local idx = 1
+          for i,t_thing in ipairs(t_braves) do
+            GotoTrain(t_thing, t_warrior_trains[idx])
+            idx = (idx + 1) % #t_warrior_trains
+            if (idx == 0) then idx = #t_warrior_trains end
+            t_thing = nil
           end
-        end
-        return true
-      end)
-      if (#t_warrior_trains > 0) then
-        local split = math.floor(#t_braves / #t_warrior_trains)
-        local remainder = #t_braves % #t_warrior_trains
-        local idx = 1
-        for i,t_thing in ipairs(t_braves) do
-          GotoTrain(t_thing, t_warrior_trains[idx])
-          idx = (idx + 1) % #t_warrior_trains
-          if (idx == 0) then idx = #t_warrior_trains end
-          t_thing = nil
         end
       end
     end
-  end
-  if (_persModel == 4) then
-    if (self:GetBuiltTemplesCoun() > 0) then
-      local t_temples = {}
-      local t_braves = {}
-      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
-        if (t.Model == 2) then
-          if (count > 0) then
-            if (get_thing_curr_cmd_list_ptr(t) == nil) then
-              table.insert(t_braves, t)
-              count = count - 1
+    if (_persModel == 4) then
+      if (self:GetBuiltTemplesCoun() > 0) then
+        local t_temples = {}
+        local t_braves = {}
+        ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+          if (t.Model == 2) then
+            if (count > 0) then
+              if (get_thing_curr_cmd_list_ptr(t) == nil) then
+                table.insert(t_braves, t)
+                count = count - 1
+                return true
+              end
+            end
+          end
+          return true
+        end)
+        ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+          if (t.Model == 5) then
+            if (t.u.Bldg.ShapeThingIdx:isNull()) then
+              table.insert(t_temples, t)
               return true
             end
           end
-        end
-        return true
-      end)
-      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
-        if (t.Model == 5) then
-          if (t.u.Bldg.ShapeThingIdx:isNull()) then
-            table.insert(t_temples, t)
-            return true
+          return true
+        end)
+        if (#t_temples > 0) then
+          local split = math.floor(#t_braves / #t_temples)
+          local remainder = #t_braves % #t_temples
+          local idx = 1
+          for i,t_thing in ipairs(t_braves) do
+            GotoTrain(t_thing, t_temples[idx])
+            idx = (idx + 1) % #t_temples
+            if (idx == 0) then idx = #t_temples end
+            t_thing = nil
           end
-        end
-        return true
-      end)
-      if (#t_temples > 0) then
-        local split = math.floor(#t_braves / #t_temples)
-        local remainder = #t_braves % #t_temples
-        local idx = 1
-        for i,t_thing in ipairs(t_braves) do
-          GotoTrain(t_thing, t_temples[idx])
-          idx = (idx + 1) % #t_temples
-          if (idx == 0) then idx = #t_temples end
-          t_thing = nil
         end
       end
     end
-  end
-  if (_persModel == 5) then
-    if (self:GetBuiltSpyTrainsCount() > 0) then
-      local t_spy_trains = {}
-      local t_braves = {}
-      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
-        if (t.Model == 2) then
-          if (count > 0) then
-            if (get_thing_curr_cmd_list_ptr(t) == nil) then
-              table.insert(t_braves, t)
-              count = count - 1
+    if (_persModel == 5) then
+      if (self:GetBuiltSpyTrainsCount() > 0) then
+        local t_spy_trains = {}
+        local t_braves = {}
+        ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+          if (t.Model == 2) then
+            if (count > 0) then
+              if (get_thing_curr_cmd_list_ptr(t) == nil) then
+                table.insert(t_braves, t)
+                count = count - 1
+                return true
+              end
+            end
+          end
+          return true
+        end)
+        ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+          if (t.Model == 6) then
+            if (t.u.Bldg.ShapeThingIdx:isNull()) then
+              table.insert(t_spy_trains, t)
               return true
             end
           end
-        end
-        return true
-      end)
-      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
-        if (t.Model == 6) then
-          if (t.u.Bldg.ShapeThingIdx:isNull()) then
-            table.insert(t_spy_trains, t)
-            return true
+          return true
+        end)
+        if (#t_spy_trains > 0) then
+          local split = math.floor(#t_braves / #t_spy_trains)
+          local remainder = #t_braves % #t_spy_trains
+          local idx = 1
+          for i,t_thing in ipairs(t_braves) do
+            GotoTrain(t_thing, t_spy_trains[idx])
+            idx = (idx + 1) % #t_spy_trains
+            if (idx == 0) then idx = #t_spy_trains end
+            t_thing = nil
           end
-        end
-        return true
-      end)
-      if (#t_spy_trains > 0) then
-        local split = math.floor(#t_braves / #t_spy_trains)
-        local remainder = #t_braves % #t_spy_trains
-        local idx = 1
-        for i,t_thing in ipairs(t_braves) do
-          GotoTrain(t_thing, t_spy_trains[idx])
-          idx = (idx + 1) % #t_spy_trains
-          if (idx == 0) then idx = #t_spy_trains end
-          t_thing = nil
         end
       end
     end
-  end
-  if (_persModel == 6) then
-    if (self:GetBuiltFireTrainsCount() > 0) then
-      local t_firewarrior_trains = {}
-      local t_braves = {}
-      ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
-        if (t.Model == 2) then
-          if (count > 0) then
-            if (get_thing_curr_cmd_list_ptr(t) == nil) then
-              table.insert(t_braves, t)
-              count = count - 1
+    if (_persModel == 6) then
+      if (self:GetBuiltFireTrainsCount() > 0) then
+        local t_firewarrior_trains = {}
+        local t_braves = {}
+        ProcessGlobalSpecialList(self.PlayerNum, 0, function(t)
+          if (t.Model == 2) then
+            if (count > 0) then
+              if (get_thing_curr_cmd_list_ptr(t) == nil) then
+                table.insert(t_braves, t)
+                count = count - 1
+                return true
+              end
+            end
+          end
+          return true
+        end)
+        ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
+          if (t.Model == 8) then
+            if (t.u.Bldg.ShapeThingIdx:isNull()) then
+              table.insert(t_firewarrior_trains, t)
               return true
             end
           end
-        end
-        return true
-      end)
-      ProcessGlobalSpecialList(self.PlayerNum, 1, function(t)
-        if (t.Model == 8) then
-          if (t.u.Bldg.ShapeThingIdx:isNull()) then
-            table.insert(t_firewarrior_trains, t)
-            return true
+          return true
+        end)
+        if (#t_firewarrior_trains > 0) then
+          local split = math.floor(#t_braves / #t_firewarrior_trains)
+          local remainder = #t_braves % #t_firewarrior_trains
+          local idx = 1
+          for i,t_thing in ipairs(t_braves) do
+            GotoTrain(t_thing, t_firewarrior_trains[idx])
+            idx = (idx + 1) % #t_firewarrior_trains
+            if (idx == 0) then idx = #t_firewarrior_trains end
+            t_thing = nil
           end
-        end
-        return true
-      end)
-      if (#t_firewarrior_trains > 0) then
-        local split = math.floor(#t_braves / #t_firewarrior_trains)
-        local remainder = #t_braves % #t_firewarrior_trains
-        local idx = 1
-        for i,t_thing in ipairs(t_braves) do
-          GotoTrain(t_thing, t_firewarrior_trains[idx])
-          idx = (idx + 1) % #t_firewarrior_trains
-          if (idx == 0) then idx = #t_firewarrior_trains end
-          t_thing = nil
         end
       end
     end
@@ -767,16 +756,6 @@ function ComputerPlayer:ProcessConverting()
       self.ConvManager:ScanAreas()
     end
   end
-end
-
-local function GotoBuild(_thing,shape,idx)
-  --log("Sent building")
-  _thing.Flags = _thing.Flags | (1<<4)
-  local cmd = Commands.new()
-  cmd.CommandType = 6
-  cmd.u.TMIdxs.TargetIdx:set(shape.ThingNum)
-  cmd.u.TMIdxs.MapIdx = world_coord2d_to_map_idx(cmd.u.TMIdxs.TargetIdx:get().Pos.D2)
-  add_persons_command(_thing,cmd,idx)
 end
 
 --NEEDS A COMPLETE REWORK COZ IT'S EXPENSIVE. \/\/\/\/\/

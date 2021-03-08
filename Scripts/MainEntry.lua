@@ -40,6 +40,7 @@ function OnPlayerInit(pn,CP)
   CP.FlagsConstructBldgs = true
   CP.FlagsCheckObstacles = true
 
+  CP:AddSpellQueue(2, 1)
   CP:AddSpellQueue(17, 3)
   CP:AddSpellQueue(2, 2)
   CP:AddSpellQueue(4, 1)
@@ -49,6 +50,10 @@ function OnPlayerInit(pn,CP)
   CP:AddSpellQueue(14, 2)
   CP:AddSpellQueue(5, 4)
   CP:AddSpellQueue(4, 3)
+  CP:AddSpellQueue(8, 1)
+  CP:AddSpellQueue(3, 2)
+  CP:AddSpellQueue(8, 2)
+  CP:AddSpellQueue(16, 1)
 
   for i = 2, 19 do
     EnableSpell(pn, i)
@@ -56,7 +61,7 @@ function OnPlayerInit(pn,CP)
   end
 
   EnableSpellCharging(pn, 17)
-  DisableSpellCharging(pn, 2)
+  EnableSpellCharging(pn, 2)
   DisableSpellCharging(pn, 10)
 
   if (pn == 1) then
@@ -171,41 +176,19 @@ end
 local DEBUG_STR = string.format("MainEntry.lua has been successfully loaded.")
 local index = 0
 
-function _GotoC3d(_thing, _c3d, flag, idx)
-  _thing.Flags = _thing.Flags | (1<<4)
-  local cmd = Commands.new()
-  cmd.CommandType = 3
-  if (flag) then
-    cmd.Flags = cmd.Flags | (1<<7)
-  end
-  cmd.u.TargetCoord.Xpos = _c3d.Xpos
-  cmd.u.TargetCoord.Zpos = _c3d.Zpos
-  add_persons_command(_thing, cmd, idx)
-end
-
 local centre = MAP_XZ_2_WORLD_XYZ(10, 132)
 
 function OnTurn()
   local _TURN = GetTurn()
-
-  -- local s = getShaman(0)
-  -- if (s ~= nil) then
-  --   if isEvery2Pow(3) then
-  --     CheckBldgShape(world_coord2d_to_map_idx(s.Pos.D2), s.Owner, 4, index)
-  --     index = (index + 1) % 4
-  --   end
-  -- end
-
-  --Ai's entry point
   if (_TURN > 0) then
-    if isEvery2Pow(1) then
-      for i,CP in ipairs(AiPlayers) do
+    for i,CP in ipairs(AiPlayers) do
+      --Building.
+      if isEvery2Pow(1, CP.PlayerNum+27+8) then
         CP:ProcessBuilding()
       end
-    end
 
-    if isEvery2Pow(9) then
-      for i,CP in ipairs(AiPlayers) do
+      --Misc stuff.
+      if isEvery2Pow(9, CP.PlayerNum+27+8) then
         if (CP:GetNumOfFireWarriors() > 1) then
           CP:PopulateDrumTowers()
         end
@@ -218,17 +201,15 @@ function OnTurn()
           CP.AttrPrefWarriorTrains = 1
         end
       end
-    end
 
-    if isEvery2Pow(4) then
-      for i,CP in ipairs(AiPlayers) do
+      --Spell charging.
+      if isEvery2Pow(4, CP.PlayerNum+27+8) then
         CP.ShamanThingIdx:Process()
         CP:ProcessSpellCharging()
       end
-    end
 
-    if isEvery2Pow(3) then
-      for i,CP in ipairs(AiPlayers) do
+      --Misc stuff.
+      if isEvery2Pow(3, CP.PlayerNum+27+8) then
         CP:ProcessShapes()
         CP:ProcessRebuildableTowers()
         if (_TURN > 64 and gs.Players[CP.PlayerNum].NumPeople < 42) then
