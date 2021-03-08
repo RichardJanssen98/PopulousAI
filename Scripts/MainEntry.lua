@@ -193,6 +193,7 @@ function OnTurn()
           CP:PopulateDrumTowers()
         end
 
+
         if (CP:GetNumOfBraves() > 40 and CP:GetNumOfFireWarriors() < 16 and CP:GetBuiltWarriorTrainsCount() > 0) then
           CP:TrainPeople(6, 4)
         end

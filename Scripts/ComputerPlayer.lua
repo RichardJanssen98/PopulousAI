@@ -1048,6 +1048,36 @@ function ComputerPlayer:ProcessBuilding()
   end
 end
 
+function ComputerPlayer:GetRandomPerson(_persModel)
+  local pcont = getPlayerContainer(self.PlayerNum)
+  local pcontPersList = pcont.PlayerLists[0]
+  local pTempArr = {}
+  pcontPersList:processList(function(t)
+    if (t.Model == _persModel) then
+      pTempArr[#pTempArr+1] = t
+      return true
+    end
+    return true
+  end)
+  log("Size: " .. #pTempArr)
+  return pTempArr[G_RANDOM(#pTempArr)+1]
+end
+
+function ComputerPlayer:GetRandomBuilding(_bldg)
+  local pcont = getPlayerContainer(self.PlayerNum)
+  local pcontBldgList = pcont.PlayerLists[1]
+  local pTempArr = {}
+  pcontBldgList:processList(function(t)
+    if (t.Model == _bldg) then
+      pTempArr[#pTempArr+1] = t
+      return true
+    end
+    return true
+  end)
+  log("Size: " .. #pTempArr)
+  return pTempArr[G_RANDOM(#pTempArr)+1]
+end
+
 function ScanAreaForBldg(_pn, _idx, _radius)
   local a = _radius
   local m_idx = MapPosXZ.new()
