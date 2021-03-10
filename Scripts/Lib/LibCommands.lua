@@ -30,7 +30,7 @@ function GotoPatrolSingleC3d(_pers, _c3d)
   cmd.Flags = cmd.Flags | (1<<7)
   cmd.u.TargetCoord.Xpos = _c3d.Xpos
   cmd.u.TargetCoord.Zpos = _c3d.Zpos
-  add_persons_command(_pers, cmd, i-1)
+  add_persons_command(_pers, cmd, 0)
 end
 
 --Go into building command.

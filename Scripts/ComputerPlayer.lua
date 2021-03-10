@@ -1048,6 +1048,7 @@ function ComputerPlayer:ProcessBuilding()
   end
 end
 
+--Will return any person, even if he's fighting.
 function ComputerPlayer:GetRandomPerson(_persModel)
   local pcont = getPlayerContainer(self.PlayerNum)
   local pcontPersList = pcont.PlayerLists[0]
@@ -1059,10 +1060,27 @@ function ComputerPlayer:GetRandomPerson(_persModel)
     end
     return true
   end)
-  log("Size: " .. #pTempArr)
   return pTempArr[G_RANDOM(#pTempArr)+1]
 end
 
+--Will return only free, available people.
+function ComputerPlayer:GetRandomSparePerson(_persModel)
+  local pcont = getPlayerContainer(self.PlayerNum)
+  local pcontPersList = pcont.PlayerLists[0]
+  local pTempArr = {}
+  pcontPersList:processList(function(t)
+    if (t.Model == _persModel) then
+      if (get_thing_curr_cmd_list_ptr(t) == nil and is_person_on_a_building(t) == 0) then
+        pTempArr[#pTempArr+1] = t
+        return true
+      end
+    end
+    return true
+  end)
+  return pTempArr[G_RANDOM(#pTempArr)+1]
+end
+
+--Will return any damaged/undamaged building.
 function ComputerPlayer:GetRandomBuilding(_bldg)
   local pcont = getPlayerContainer(self.PlayerNum)
   local pcontBldgList = pcont.PlayerLists[1]
@@ -1074,7 +1092,23 @@ function ComputerPlayer:GetRandomBuilding(_bldg)
     end
     return true
   end)
-  log("Size: " .. #pTempArr)
+  return pTempArr[G_RANDOM(#pTempArr)+1]
+end
+
+--Will always return undamaged building.
+function ComputerPlayer:GetRandomBuiltBuilding(_bldg)
+  local pcont = getPlayerContainer(self.PlayerNum)
+  local pcontBldgList = pcont.PlayerLists[1]
+  local pTempArr = {}
+  pcontBldgList:processList(function(t)
+    if (t.Model == _bldg) then
+      if (t.State == 2) then
+        pTempArr[#pTempArr+1] = t
+        return true
+      end
+    end
+    return true
+  end)
   return pTempArr[G_RANDOM(#pTempArr)+1]
 end
 

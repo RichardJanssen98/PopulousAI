@@ -178,6 +178,14 @@ local index = 0
 
 local centre = MAP_XZ_2_WORLD_XYZ(10, 132)
 
+local function randSign()
+  local r = -1
+  if (G_RANDOM(2) == 0) then
+    r = 1
+  end
+  return r
+end
+
 function OnTurn()
   local _TURN = GetTurn()
   if (_TURN > 0) then
@@ -187,12 +195,26 @@ function OnTurn()
         CP:ProcessBuilding()
       end
 
+      if isEvery2Pow(8, CP.PlayerNum+27+8) then
+        if (CP:GetNumOfFireWarriors() > 4) then
+          local fw_to_patrol = CP:GetRandomSparePerson(6)
+          if (fw_to_patrol) then
+            local tower_to_patrol_around = CP:GetRandomBuiltBuilding(4)
+            if (tower_to_patrol_around) then
+              local c3d = Coord3D.new()
+              c3d.Xpos = tower_to_patrol_around.Pos.D3.Xpos + (G_RANDOM(5) * 512) * randSign()
+              c3d.Zpos = tower_to_patrol_around.Pos.D3.Zpos + (G_RANDOM(5) * 512) * randSign()
+              GotoPatrolSingleC3d(fw_to_patrol, c3d)
+            end
+          end
+        end
+      end
+
       --Misc stuff.
       if isEvery2Pow(9, CP.PlayerNum+27+8) then
         if (CP:GetNumOfFireWarriors() > 1) then
           CP:PopulateDrumTowers()
         end
-
 
         if (CP:GetNumOfBraves() > 40 and CP:GetNumOfFireWarriors() < 16 and CP:GetBuiltWarriorTrainsCount() > 0) then
           CP:TrainPeople(6, 4)
