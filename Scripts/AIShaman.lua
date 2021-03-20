@@ -56,6 +56,7 @@ function AIShaman:new (o, tribe, blastAllowed, lightningAllowed, ghostsAllowed, 
 
   o.flyingDuration = 0
   o.blastTrickDelay = 0
+  o.wasInBlastTrickRange = 0
 
   o.overrideRechargeSpeed = overrideRechargeSpeed
   o.aggroRange = aggroRange
@@ -78,7 +79,7 @@ function AIShaman:handleShamanCombat ()
   local target = nil
 
   if (shaman ~= nil) then
-    
+
     ProcessGlobalTypeList(T_PERSON, function(t)
       --Check if the person is one of my allies
       if (self.allies ~= 0) then
@@ -120,7 +121,7 @@ function AIShaman:handleShamanCombat ()
         if (target.Owner ~= self.tribe and target.Model == M_PERSON_MEDICINE_MAN and isAlly == false) then
           if (target.Model == M_PERSON_MEDICINE_MAN) then
             --Do the Blast Trick
-            if (self.flyingDuration > 7 and self.flyingDuration < 9 and self.blastTrickAllowed == 1 and shaman.State ~= S_PERSON_ELECTROCUTED and get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 4000 and self.blastTrickDelay == 0 and self.smartCastsBlast < self.maxSmartCastsBlast) then
+            if (self.flyingDuration > 7 and self.flyingDuration < 9 and self.blastTrickAllowed == 1 and shaman.State ~= S_PERSON_ELECTROCUTED and get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 4000 and self.blastTrickDelay == 0 and self.smartCastsBlast < self.maxSmartCastsBlast and self.wasInBlastTrickRange == 1) then
               local blast = createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, target.Pos.D3, false, false)
               local rng_s_click = G_RANDOM(3) + 1
               if (rng_s_click == 1) then --Give the AI a 1/3 chance to S click the Blast Trick on the enemy
@@ -367,6 +368,13 @@ function AIShaman:handleShamanCombat ()
         self.enemyShamanNearby = 0
       end
 
+      if (target ~= nil) then
+        if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 1500 + shaman.Pos.D3.Ypos*3 and self.wasInBlastTrickRange == 0 and is_thing_on_ground(shaman) == 1) then
+          self.wasInBlastTrickRange = 1
+        elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) > 1500 + shaman.Pos.D3.Ypos*3 and is_thing_on_ground(shaman) == 1 and self.wasInBlastTrickRange == 1) then
+          self.wasInBlastTrickRange = 0
+        end
+      end
 
       return true
     end)
