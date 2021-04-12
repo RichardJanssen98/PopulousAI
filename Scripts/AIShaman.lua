@@ -75,6 +75,7 @@ function AIShaman:new (o, tribe, blastAllowed, lightningAllowed, ghostsAllowed, 
   o.enemyShamanNearby = 0
 
   o.blastsFailedUpdated = 0
+  o.blastFailedTarget = nil
   o.blastBadMouthed = 0
   o.blastsFailed = 0
   o.lightsMissed = 0
@@ -164,14 +165,18 @@ function AIShaman:handleShamanCombat ()
               self.targetThatIsInAir = target
             end
 
-            if (target.State == S_PERSON_SPELL_TRANCE and self.blastsFailedUpdated == 0) then
+            if (target.State == S_PERSON_SPELL_TRANCE and self.blastsFailedUpdated == 0 and get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 3500) then
               self.enemyCastDelay = 24
               self.blastsFailedUpdated = 1
               self.blastsFailed = self.blastsFailed + 1
+              self.blastFailedTarget = target
             end
 
-            if (self.blastsFailedUpdated == 1 and target.State ~= S_PERSON_SPELL_TRANCE) then
-              self.blastsFailedUpdated = 0
+            if (self.blastsFailedUpdated == 1 and self.blastFailedTarget ~= nil) then
+              if (self.blastFailedTarget.State ~= S_PERSON_SPELL_TRANCE) then
+                self.blastsFailedUpdated = 0
+                self.blastFailedTarget = nil
+              end
             end
 
             --Dodge lightning if needed, otherwise only try to dodge blast
