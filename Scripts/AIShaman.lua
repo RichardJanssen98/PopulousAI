@@ -6,6 +6,7 @@ import(Module_Game)
 import(Module_Objects)
 import(Module_Map)
 import(Module_Commands)
+import(Module_Math)
 include("UtilPThings.lua")
 include("UtilRefs.lua")
 
@@ -48,6 +49,11 @@ function AIShaman:new (o, tribe, blastAllowed, lightningAllowed, ghostsAllowed, 
   o.maxSmartCastsBlast = 4
   o.maxSmartCastsGhosts = 4
   o.maxSmartCastsLightning = 4
+  o.aimLight = 0
+  o.locationSave1 = nil
+  o.locationSave2 = nil
+  o.locationSave3 = nil
+  o.locationSave4 = nil
 
   o.didDodgeOnCast = 0
   o.didDodgeOnCastTick = 0
@@ -68,6 +74,14 @@ function AIShaman:new (o, tribe, blastAllowed, lightningAllowed, ghostsAllowed, 
   o.chanceToHitAir = 0
   o.enemyShamanNearby = 0
 
+  o.blastsFailedUpdated = 0
+  o.blastBadMouthed = 0
+  o.blastsFailed = 0
+  o.lightsMissed = 0
+
+  o.combatInitialized = 0
+  o.maxMissedLightsBeforeRandomising = 3
+
   return o
 end
 
@@ -76,7 +90,12 @@ function AIShaman:handleShamanCombat ()
   local shaman = getShaman(self.tribe)
 
   isAlly = false
-  local target = nil
+  
+  --have to initialize once, otherwise it keeps resetting target as it doesn't always find an enemy in the list.
+  if (self.combatInitialized == 0) then
+    target = nil
+    self.combatInitialized = 1
+  end
 
   if (shaman ~= nil) then
 
@@ -93,7 +112,7 @@ function AIShaman:handleShamanCombat ()
         end
       end
 
-      if (t.Owner ~= self.tribe and t.Model == M_PERSON_MEDICINE_MAN and isAlly == false and get_world_dist_xyz(shaman.Pos.D3, t.Pos.D3) < self.aggroRange) then
+      if (t.Owner ~= self.tribe and t.Model == M_PERSON_MEDICINE_MAN and isAlly == false and get_world_dist_xyz(shaman.Pos.D3, t.Pos.D3) < self.aggroRange*2) then
         target = t
         self.enemyShamanNearby = 1
       end
@@ -145,8 +164,14 @@ function AIShaman:handleShamanCombat ()
               self.targetThatIsInAir = target
             end
 
-            if (target.State == S_PERSON_SPELL_TRANCE) then
-              self.enemyCastDelay = 48
+            if (target.State == S_PERSON_SPELL_TRANCE and self.blastsFailedUpdated == 0) then
+              self.enemyCastDelay = 24
+              self.blastsFailedUpdated = 1
+              self.blastsFailed = self.blastsFailed + 1
+            end
+
+            if (self.blastsFailedUpdated == 1 and target.State ~= S_PERSON_SPELL_TRANCE) then
+              self.blastsFailedUpdated = 0
             end
 
             --Dodge lightning if needed, otherwise only try to dodge blast
@@ -264,8 +289,32 @@ function AIShaman:handleShamanCombat ()
                 return false
               end
               --If I'm allowed and can cast lightning cast it
-            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 5000 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.lightningAllowed == 1 and MANA(self.tribe) > self.manaCostLightning and self.spellDelay == 0 and self.lightningSpecialDelay == 0 and self.smartCastsLightning < self.maxSmartCastsLightning) then
-              if (is_thing_on_ground(shaman) == 1) then
+            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 5000 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.lightningAllowed == 1 and MANA(self.tribe) > self.manaCostLightning and self.spellDelay == 0 and self.lightningSpecialDelay == 0) then
+              self.aimLight = 1
+              local overrideMaxSmartCasts = 0
+              
+              --Give AI a random chance to S click after missing lights out of rage
+              if (self.smartCastsLightning < self.maxSmartCastsLightning) then
+                if (self.lightsMissed >= self.maxMissedLightsBeforeRandomising-1) then
+                  local giveUpAndSClick = G_RANDOM(2) + 1
+                  if (giveUpAndSClick == 1) then
+                    self.aimLight = 0
+                  end
+                else --Give AI a small random chance to S click.
+                  local randomSClick = G_RANDOM(3) + 1
+                  if (randomSClick == 1) then
+                    self.aimLight = 0
+                  end
+                end
+              end
+              
+              --S Click when enemy too close and override max smart casts so AI prioritizes Lightning over Blast in close range
+              if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 3000 + shaman.Pos.D3.Ypos*3) then
+                self.aimLight = 0
+                overrideMaxSmartCasts = 1
+              end
+
+              if (is_thing_on_ground(shaman) == 1 and self.aimLight == 0 and (self.smartCastsLightning < self.maxSmartCastsLightning or overrideMaxSmartCasts == 1)) then
                 local light = createThing(T_SPELL, M_SPELL_LIGHTNING_BOLT, shaman.Owner, target.Pos.D3, false, false)
                 light.u.Spell.TargetThingIdx:set(target.ThingNum)
                 self.spellDelay = 24 + G_RANDOM(6)
@@ -274,23 +323,138 @@ function AIShaman:handleShamanCombat ()
                 self.smartCastsLightning = self.smartCastsLightning + 1
                 GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostLightning * -1)
                 return false
+              elseif (is_thing_on_ground(shaman) == 1 and self.aimLight == 1) then
+                  self.lightsMissed = self.lightsMissed + 1
+                  local aimLoc = Coord3D.new()
+                  local c2d = Coord2D.new()
+                  local xLoc = 0
+                  local zLoc = 0
+
+                  --If I missed 2 lights then aim into a random direction (including if the target stood still)
+                  --There's a higher chance to aim in front instead of a random direction.
+                  if (target.State == S_PERSON_GOTO_BASE_AND_WAIT or target.State == S_PERSON_WAIT_AT_POINT or target.State == S_PERSON_SPELL_TRANCE) then
+                    xLoc = target.Pos.D3.Xpos
+                    zLoc = target.Pos.D3.Zpos
+                  elseif (self.lightsMissed <= self.maxMissedLightsBeforeRandomising) then
+                    xLoc = target.Pos.D3.Xpos + (10 * target.Move.Velocity.X)
+                    zLoc = target.Pos.D3.Zpos + (10 * target.Move.Velocity.Z)
+                  else
+                    local randomDirection = G_RANDOM(14)
+                    if (randomDirection == 0) then
+                      xLoc = target.Pos.D3.Xpos + (6 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (-6 * target.Move.Velocity.Z)
+                    elseif (randomDirection == 1) then
+                      xLoc = target.Pos.D3.Xpos + (6 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (target.Move.Velocity.Z)
+                    --Removed code for aiming straight behind. Keeping it commented just in case this needs to be turned on in the future.
+                    --elseif (randomDirection == 2) then
+                      --xLoc = target.Pos.D3.Xpos + (target.Move.Velocity.X)
+                      --zLoc = target.Pos.D3.Zpos + (6 * target.Move.Velocity.Z)
+                    elseif (randomDirection == 2) then
+                      xLoc = target.Pos.D3.Xpos
+                      zLoc = target.Pos.D3.Zpos
+                    elseif (randomDirection == 3) then
+                      xLoc = target.Pos.D3.Xpos + (target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (-6 * target.Move.Velocity.Z)
+                    elseif (randomDirection == 4) then
+                      xLoc = target.Pos.D3.Xpos + (-6 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (6 * target.Move.Velocity.Z)
+                    elseif (randomDirection == 5) then
+                      xLoc = target.Pos.D3.Xpos + (-6 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (target.Move.Velocity.Z)
+                    elseif (randomDirection == 6) then
+                      xLoc = target.Pos.D3.Xpos + (-6 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (-6 * target.Move.Velocity.Z)
+                    elseif (randomDirection >= 7) then --Aim in front just in case
+                      xLoc = target.Pos.D3.Xpos + (10 * target.Move.Velocity.X)
+                      zLoc = target.Pos.D3.Zpos + (10 * target.Move.Velocity.Z)
+                    end
+                  end
+                  
+                  c2d.Xpos = xLoc
+                  c2d.Zpos = zLoc
+                  coord2D_to_coord3D(c2d, aimLoc)
+                  createThing(T_SPELL, M_SPELL_LIGHTNING_BOLT, shaman.Owner, aimLoc, false, false)
+                  self.spellDelay = 24 + G_RANDOM(6)
+                  self.lightningSpecialDelay = 30 + G_RANDOM(20)
+                  self.blastTrickDelay = 12
+
+                  --If it's not overridden then add smartcasts
+                  if (overrideMaxSmartCasts == 0) then
+                    self.smartCastsLightning = self.smartCastsLightning + 1
+                  end
+                  
+                  GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostLightning * -1)
+
+                  overrideMaxSmartCasts = 0
+                  return false
               end
               --If I'm allowed and can cast blast cast it
-            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2500 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.blastAllowed == 1 and MANA(self.tribe) > self.manaCostBlast and self.spellDelay == 0  and self.smartCastsBlast < self.maxSmartCastsBlast) then
-              if (is_thing_on_ground(shaman) == 1 and ((self.targetThatIsInAir == target and self.chanceToHitAir == 1) or self.targetThatIsInAir ~= target)) then
+            elseif (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2500 + shaman.Pos.D3.Ypos*3 and (target.Model == M_PERSON_MEDICINE_MAN) and self.blastAllowed == 1 and MANA(self.tribe) > self.manaCostBlast and self.spellDelay == 0  and (self.smartCastsBlast < self.maxSmartCastsBlast and is_thing_on_ground(shaman) == 1 and ((self.targetThatIsInAir == target and self.chanceToHitAir == 1) or self.targetThatIsInAir ~= target))) then
+              
+              self.blastsFailed = 0
+
+              local blast = createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, target.Pos.D3, false, false)
+              blast.u.Spell.TargetThingIdx:set(target.ThingNum)
+                
+              self.spellDelay = 24 + G_RANDOM(25)
+              self.blastTrickDelay = 12
+              self.smartCastsBlast = self.smartCastsBlast + 1
+
+              --Set chance for blasting enemy in the sky for the next blast
+              self.chanceToHitAir = G_RANDOM(10) +1
+
+              GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostBlast * -1)
+              return false
+            end
+            if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 3800 and self.blastsFailed >= 3 and self.spellDelay == 0) then
+              if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 2500) then
+                self.blastsFailed = 0
                 local blast = createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, target.Pos.D3, false, false)
                 blast.u.Spell.TargetThingIdx:set(target.ThingNum)
-                self.spellDelay = 24 + G_RANDOM(25)
-                self.blastTrickDelay = 12
+                
                 self.smartCastsBlast = self.smartCastsBlast + 1
+                self.spellDelay = 24 + G_RANDOM(25)
+              else
+                if (self.blastBadMouthed == 0) then
+                  log_msg(self.tribe, "GTFO with that dude")
+                  self.blastBadMouthed = 1
+                end
+                
+                local aimLoc = Coord3D.new()
+                local c2d = Coord2D.new()
+                local xLoc = 0
+                local zLoc = 0
+                --If the enemy is standing still while bullying me aim between us.
 
+                local deltaX = (virtPos(target.Pos.D3.Xpos) - virtPos(shaman.Pos.D3.Xpos))
+                local deltaZ = (virtPos(target.Pos.D3.Zpos) - virtPos(shaman.Pos.D3.Zpos))
+
+
+                local distanceToTarget = get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3)
+
+                xLoc = shaman.Pos.D3.Xpos + ((2700) * (deltaX/distanceToTarget))
+                zLoc = shaman.Pos.D3.Zpos + ((2700) * (deltaZ/distanceToTarget))
+
+                xLoc = math.floor(xLoc)
+                zLoc = math.floor(zLoc)
+              
+                c2d.Xpos = xLoc
+                c2d.Zpos = zLoc
+                coord2D_to_coord3D(c2d, aimLoc)
+                createThing(T_SPELL, M_SPELL_BLAST, shaman.Owner, aimLoc, false, false)
+
+                self.spellDelay = 16
+                
                 --Set chance for blasting enemy in the sky for the next blast
                 self.chanceToHitAir = G_RANDOM(10) +1
-
-                GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostBlast * -1)
-                return false
               end
-            end
+
+                self.blastTrickDelay = 12
+                GIVE_MANA_TO_PLAYER(self.tribe, self.manaCostBlast * -1)
+              return false
+           end
+
           end
         end
       end
@@ -362,12 +526,21 @@ function AIShaman:handleShamanCombat ()
 
         if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) > self.aggroRange) then
           self.enemyShamanNearby = 0
+          self.lightsMissed = 0
+          self.blastsFailed = 0
+          target = nil
         end
       end
-      if (shaman == nil) then
+
+      --Reset enemy target and lights missed when the enemy shaman or my shaman dies
+      if (self.enemyShamanNearby == 1 and (shaman == nil or target == nil or target.State == S_PERSON_DYING or target.State == S_PERSON_ELECTROCUTED)) then
         self.enemyShamanNearby = 0
+        self.lightsMissed = 0
+        self.blastsFailed = 0
+        target = nil
       end
 
+      --Extra check to make sure the shaman does not blast trick an enemy shaman outside of range.
       if (target ~= nil) then
         if (get_world_dist_xyz(shaman.Pos.D3, target.Pos.D3) < 1500 + shaman.Pos.D3.Ypos*3 and self.wasInBlastTrickRange == 0 and is_thing_on_ground(shaman) == 1) then
           self.wasInBlastTrickRange = 1
@@ -375,7 +548,6 @@ function AIShaman:handleShamanCombat ()
           self.wasInBlastTrickRange = 0
         end
       end
-
       return true
     end)
   end
@@ -425,6 +597,10 @@ function AIShaman:checkSpellDelay()
     if (is_thing_on_ground(shaman) == 0) then
       self.flyingDuration = self.flyingDuration + 1
     end
+  end
+
+  if (self.blastsFailed == 0 and self.blastBadMouthed == 1) then
+    self.blastBadMouthed = 0
   end
 
   if (self.targetThatIsInAir ~= nil) then
@@ -511,4 +687,11 @@ function AIShaman:checkSpellDelay()
       end
     end
   end
+end
+
+function virtPos(pos)
+  if (pos < 0) then
+    pos = pos + 65535
+  end
+  return pos
 end

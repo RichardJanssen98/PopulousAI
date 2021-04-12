@@ -30,11 +30,8 @@ function Tile:tileAltitudeChange()
     if (self.starterAltitude ~= currentAltitude) then 
         local altDifference = currentAltitude - self.starterAltitude
         
-        --Altitude changed into Water
-        if (self.starterAltitude > 0 and currentAltitude == 0) then
-            result = "water"
         --Big Altitude change
-        elseif (altDifference > 30) then
+        if (altDifference > 30) then
             log("GoingIntoHeight")
             if (self.starterAltitude < currentAltitude) then --If altitude lower than original can't raise it higher anymore
                 --Set starterAltitude to currentAltitude somehow
@@ -42,6 +39,11 @@ function Tile:tileAltitudeChange()
                 log("setNewHeight")
             end
             result = "height"
+        end
+
+        --Altitude changed into Water
+        if (self.starterAltitude > 0 and currentAltitude == 0) then
+            result = "water"
         end
     end
 

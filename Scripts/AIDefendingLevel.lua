@@ -1,4 +1,8 @@
 import(Module_System)
+import(Module_String)
+import(Module_Globals)
+import(Module_DataTypes)
+import(Module_Package)
 import(Module_Players)
 import(Module_Defines)
 import(Module_PopScript)
@@ -60,8 +64,20 @@ SHAMAN_DEFEND(TRIBE_RED, 50, 14, TRUE)
 SET_DEFENCE_RADIUS(TRIBE_RED, 0)
 SET_AUTO_BUILD(TRIBE_RED)
 
-AIDefendingRed = AIDefending:new(nil, TRIBE_RED, 0, 50, 14, 240, 1, 1, 1, 1, 1, 1)
+
+local c2d1 = Coord2D.new()
+local c2d2 = Coord2D.new()
+local c3d1 = Coord3D.new()
+local c3d2 = Coord3D.new()
+
+map_xz_to_world_coord2d(58, 56, c2d1)
+map_xz_to_world_coord2d(98, 54, c2d2)
+
+expandLocationsRed = {c2d1, c2d2}
+
+AIDefendingRed = AIDefending:new(nil, TRIBE_RED, 0, 50, 14, 240, 1, 1, 1, 1, 1, 1, 150, 20, expandLocationsRed)
 AIShamanRed = AIShaman:new(nil, TRIBE_RED, 1, 1, 1, 1, 1, 0, 0, 1, 1, 10000, 3)
+redExpand = 0
 RepairPointsRed = {}
 
 --[[AIDefendingRed:addDrumTower(50, 2)
@@ -91,10 +107,10 @@ function OnTurn()
     end
 
     if (everyPow(128, 1)) then
-        RepairPointsRed = AIDefendingRed:repairDamagedTiles()
+        RepairPointsRed = AIDefendingRed:repairDamagedTiles(0)
     end
 
-
+    local turnToForceNextRepair = 0
     if (RepairPointsRed[1] ~= nil and RepairPointsRed[2] ~= nil) then
         local redFinishedRepairing = AIDefendingRed:repairBetweenPoints(RepairPointsRed[1], RepairPointsRed[2])
         if (redFinishedRepairing == 1) then

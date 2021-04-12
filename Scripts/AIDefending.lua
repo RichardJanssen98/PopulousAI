@@ -12,10 +12,12 @@ include("UtilRefs.lua")
 include("DrumTower.lua")
 include("Tile.lua")
 
-AIDefending = {tribe = 0, allies = 0, shamanDefaultDefX = 0, shamanDefaultDefZ = 0, defendTickCooldown = 0, shouldCounterShaman = 0, shouldCounterBraves = 0, shouldCounterWarriors = 0, shouldCounterFws = 0, shouldCounterPreachers = 0, shouldCounterSpies = 0}
+AIDefending = {tribe = 0, allies = 0, shamanDefaultDefX = 0, shamanDefaultDefZ = 0, defendTickCooldown = 0, shouldCounterShaman = 0, shouldCounterBraves = 0, 
+shouldCounterWarriors = 0, shouldCounterFws = 0, shouldCounterPreachers = 0, shouldCounterSpies = 0, expandPopulation = 0, expandTurn = 0, expandAreas = 0}
+
 AIDefending.__index = AIDefending
 
-function AIDefending:new (o, tribe, allies, shamanDefaultDefX, shamanDefaultDefZ, defendTickCooldown, shouldCounterShaman, shouldCounterBraves, shouldCounterWarriors, shouldCounterFws, shouldCounterPreachers, shouldCounterSpies)
+function AIDefending:new (o, tribe, allies, shamanDefaultDefX, shamanDefaultDefZ, defendTickCooldown, shouldCounterShaman, shouldCounterBraves, shouldCounterWarriors, shouldCounterFws, shouldCounterPreachers, shouldCounterSpies, expandPopulation, expandTurn, expandAreas)
     local o = o or {}
     setmetatable(o, AIDefending)
     o.tribe = tribe
@@ -41,9 +43,15 @@ function AIDefending:new (o, tribe, allies, shamanDefaultDefX, shamanDefaultDefZ
     o.shouldCounterSpies = shouldCounterSpies
 
     o.tiles = {}
+    o.initiatedTiles = 0
     o.atLandBridgePos = 0
     o.movingTowardsRepair = 0
     o.movingTowardsRepairTick = 0
+    o.expandedCount = 0
+
+    o.expandPopulation = expandPopulation
+    o.expandTurn = expandTurn
+    o.expandAreas = expandAreas
 
     return o
 end
@@ -71,13 +79,44 @@ end
 
 function AIDefending:repairDamagedTiles() 
     local result = {}
-    log("Repair, NO?")
 
     if (MANA(self.tribe) > SPELL_COST(M_SPELL_LAND_BRIDGE)) then
         local currentAltitude = ""
         local damageTypeToRepair = ""
         local damagedTiles = {}
-        log("Enough Mana")
+
+      if (self.expandPopulation >= _gsi.Players[self.tribe].NumPeople and GetTurn() >= self.expandTurn) then
+        log("Koloniseren")
+        local expandTiles = {}
+        local whichAreaToExpand = 0 
+        local c2d = Coord2D.new()
+        whichAreaToExpand = G_RANDOM(tableLength(self.expandAreas)) + 1
+        log("Random "..whichAreaToExpand)
+        log("expandArea1X "..self.expandAreas[1].Xpos)
+        log("expandArea1Z "..self.expandAreas[1].Zpos)
+        log("expandArea2X "..self.expandAreas[2].Xpos)
+        log("expandArea2Z "..self.expandAreas[2].Zpos)
+
+        SearchMapCells(CIRCULAR, 0, 0, 9, world_coord2d_to_map_idx(self.expandAreas[whichAreaToExpand]), function(me)
+          if (is_map_elem_sea_or_coast(me) > 0) then
+            map_ptr_to_world_coord2d(me, c2d)
+            local tempAltitude = point_altitude(c2d.Xpos, c2d.Zpos)
+            local tempTile = Tile:new(nil, self.tribe, c2d, tempAltitude)
+            table.insert(expandTiles, tempTile)
+            return false
+          end
+        return true
+        end)
+
+        if (tableLength(expandTiles) > 0) then
+          result = self:findDamagedTiles(expandTiles)
+        end
+        
+        return result
+      end
+      if (self.expandedCount >= 3) then
+        self.expandedCount = 0
+      end
 
     for _, tile in pairs(self.tiles) do
         currentAltitude = tile:tileAltitudeChange()
@@ -96,70 +135,68 @@ function AIDefending:repairDamagedTiles()
 
     --Start looking for a way to fix the land that turned into water
     if (damageTypeToRepair == "water" and self.movingTowardsRepair == 0) then
-        local distanceBetweenPoints = 0
-        local firstPoint = 0
-        local secondPoint = 0
-        log("Looking to Repair")
-
-        for _, tile in pairs(damagedTiles) do
-            local tempC2D = Coord2D.new()
-            local firstPointC3d = Coord3D.new()
-            local secondPointC3d = Coord3D.new()
-            local tempSecondPointC3d = Coord3D.new()
-            local firstWaterPointC2d = Coord2D.new()
-            local secondWaterPointC2d = Coord2D.new()
-            
-            SearchMapCells(CIRCULAR, 0, 0, 1, world_coord2d_to_map_idx(tile.c2d), function(me)
-                if (is_map_elem_land_or_coast(me) > 0) then
-                    if (firstPoint == 0) then
-                        firstPoint = me
-                        map_ptr_to_world_coord2d(me, tempC2D)
-                        log("foundFirstPoint")
-                        coord2D_to_coord3D(tempC2D, firstPointC3d)
-                        firstWaterPointC2d = tile.c2d
-                        result[1] = firstPointC3d
-                    else
-                        if (secondPoint == 0) then
-                            map_ptr_to_world_coord2d(me, tempC2D)
-                            log("foundSecondPoint")
-                            coord2D_to_coord3D(tempC2D, secondPointC3d)
-                            secondWaterPointC2d = tile.c2d
-                            distanceBetweenPoints = get_world_dist_xz(firstWaterPointC2d, secondWaterPointC2d)
-
-                            if (distanceBetweenPoints < 20000) then
-                            log("Distance Is "..distanceBetweenPoints)
-                              log("UnderDistance")
-                              coord2D_to_coord3D(secondWaterPointC2d, secondPointC3d)
-                                result[2] = secondPointC3d
-                                secondPoint = me
-                            end
-                        else
-                            local distanceBetweenNewPoints = 0
-                            map_ptr_to_world_coord2d(me, tempC2D)
-                            coord2D_to_coord3D(tempC2D, tempSecondPointC3d)
-                            secondWaterPointC2d = tile.c2d
-                            distanceBetweenNewPoints = get_world_dist_xz(firstWaterPointC2d, secondWaterPointC2d)
-                            if (distanceBetweenPoints < distanceBetweenNewPoints) then
-                                coord2D_to_coord3D(tempC2D, secondPointC3d)
-                                distanceBetweenPoints = get_world_dist_xz(firstWaterPointC2d, secondWaterPointC2d)
-
-                                if (distanceBetweenNewPoints < 20000) then
-                                  log("Distance is new "..distanceBetweenNewPoints)
-                                  log("UnderDistanceNew")
-                                  coord2D_to_coord3D(secondWaterPointC2d, secondPointC3d)
-                                    result[2] = secondPointC3d
-                                    secondPoint = me
-                                end
-                            end
-                        end
-                    end
-                end
-                return true
-            end)
-        end
+        result = self:findDamagedTiles(damagedTiles)
     end
     end
-    return result
+end
+
+function AIDefending:findDamagedTiles(damagedTiles)
+  local distanceBetweenPoints = 0
+  local result = {}
+  log("Looking to Repair")
+
+  local tempC2D = Coord2D.new()
+  local firstPointC2d = Coord2D.new()
+  local firstPointC3d = Coord3D.new()
+  local betterFirstPointC3d = Coord3D.new()
+  local secondPointC2d = Coord2D.new()
+  local secondPointC3d = Coord3D.new()
+  local tempSecondPointC2d = Coord2D.new()
+  local tempSecondPointC3d = Coord3D.new()
+
+   --FIND SECOND TILE
+  --for i, p in pairs(damagedTiles) do
+        SearchMapCells(CIRCULAR, 0, 0, 9, world_coord2d_to_map_idx(damagedTiles[1].c2d), function(me)
+          if (is_map_elem_coast(me) > 0) then
+              if (result[1] == nil) then
+                  map_ptr_to_world_coord2d(me, tempC2D)
+                  log("foundFirstPoint")
+                  firstPointC2d = tempC2D
+                  coord2D_to_coord3D(tempC2D, firstPointC3d)
+                  result[1] = firstPointC3d
+              else
+                  if (result[2] == nil) then
+                      map_ptr_to_world_coord2d(me, tempC2D)
+                      log("foundSecondPoint")
+                      secondPointC2d = tempC2D
+                      distanceBetweenPoints = get_world_dist_xz(firstPointC2d, secondPointC2d)
+
+                      if (distanceBetweenPoints < 20000 and distanceBetweenPoints ~= 0) then
+                        --log("Distance Is "..distanceBetweenPoints)
+                        coord2D_to_coord3D(tempC2D, secondPointC3d)
+                        result[2] = secondPointC3d
+                      end
+                  else
+                      local distanceBetweenNewPoints = 0
+                      map_ptr_to_world_coord2d(me, tempC2D)
+                      tempSecondPointC2d = tempC2D
+                      distanceBetweenNewPoints = get_world_dist_xz(firstPointC2d, tempSecondPointC2d)
+                      --log("DistanceOld "..distanceBetweenPoints)
+                      --log("DistanceNew "..distanceBetweenNewPoints)
+                      if (distanceBetweenPoints < distanceBetweenNewPoints and distanceBetweenNewPoints < 20000) then
+                          coord2D_to_coord3D(tempSecondPointC2d, tempSecondPointC3d)
+                          distanceBetweenPoints = distanceBetweenNewPoints
+                          --log("Distance is new "..distanceBetweenPoints)
+                          result[2] = tempSecondPointC3d
+                      end
+                  end
+              end
+          end
+          tempC2D = Coord2D.new()
+          return true
+        end)
+  --end
+  return result
 end
 
 function AIDefending:repairBetweenPoints(point1, point2) 
@@ -172,11 +209,10 @@ function AIDefending:repairBetweenPoints(point1, point2)
         self.movingTowardsRepair = 1
         self.movingTowardsRepairTick = 240
         log("Moving Towards Point")
-        return 0
     end
 
     if (shaman ~= nil) then
-        if (get_world_dist_xyz(shaman.Pos.D3, point1) < 850) then
+        if (get_world_dist_xyz(shaman.Pos.D3, point1) < 650) then
           log("Standing on point")
           createThing(T_SPELL, M_SPELL_LAND_BRIDGE, shaman.Owner, point2, false, false)
           local manaCostLandBridge = SPELL_COST(M_SPELL_LAND_BRIDGE)
@@ -188,8 +224,9 @@ function AIDefending:repairBetweenPoints(point1, point2)
 end
 
 function AIDefending:defendMarkerLocation(defendMarkerX, defendMarkerZ, marker, radius, repairTiles)
-    if (GetTurn() == 36 and GetTurn() < 64 and repairTiles == 1) then
+    if (GetTurn() >= 36 and repairTiles == 1 and self.initiatedTiles == 0) then
         self:setupTiles(defendMarkerX, defendMarkerZ, radius)
+        self.initiatedTiles = 1
     end
 
     if (self.shouldCounterShaman == 1) then
