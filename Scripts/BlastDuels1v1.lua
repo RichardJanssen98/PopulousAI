@@ -30,8 +30,6 @@ function OnTurn()
     
     if (GetTurn() > 128) then
        AIShamanRed:handleShamanCombat()
-
-       AIShamanRed:checkSpellDelay()
     end
 
     if (everyPow(120, 1)) then --Stop the AI from spawn camping

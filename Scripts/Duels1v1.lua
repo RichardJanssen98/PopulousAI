@@ -30,8 +30,6 @@ function OnTurn()
     
     if (GetTurn() > 128) then
        AIShamanRed:handleShamanCombat()
-
-       AIShamanRed:checkSpellDelay()
     end
 
     if (everyPow(240, 1)) then
